@@ -1,0 +1,179 @@
+(** {1 Streams} *)
+
+(** {2 Generic Streams}
+
+Streams are represented as non-mutable, since once an element is a part of the
+stream this fact cannot be undone. Length/capacity is non-mutable as well, and determines
+the lower bound of the number of elements on the stream.
+
+This library is otherwise loosely based an the standard Why3 "Array" module
+
+*)
+
+module Stream
+
+  use import int.Int
+  use import map.Map as M
+  use import map.MapEq
+  use import array.Array as A
+
+  type stream 'a model { mutable ptr: int; size: int; members: map int 'a }
+    invariant { 0 <= self.ptr <= self.size }
+
+  (* We need an abstract type aliases here to prevent really hazardous mistakes *)
+  type reader 'a model { strm: stream 'a }
+
+  function shift (map int 'a) int: map int 'a
+  axiom shift_def:
+    forall m: map int 'a. forall i j:int. M.get (shift m j) i  = M.get m (i+j)
+ 
+  function atleast (n: int): int
+  axiom atleast_def:
+    forall n: int. atleast(n) >= n
+
+  function deriv (a: stream 'a) (n: int): stream 'a = 
+    { ptr = a.ptr-n; size = a.size-n; members=shift a.members n }
+
+  function empty: stream 'a
+  axiom empty_clean: (empty: stream 'a).ptr = 0
+
+  function get (a: stream 'a) (i: int): 'a = M.get a.members i
+
+  function hd (a: stream 'a): 'a = get a 0
+  function tl (a: stream 'a): stream 'a = deriv a 1
+
+  function view (a: stream 'a): array 'a   = { length = a.size; elts = a.members }
+  function array (a: stream 'a): array 'a  = { length = a.ptr;  elts = a.members }
+  function stream (a: array 'a): stream 'a = { ptr = a.length; size = atleast a.length; members = a.elts }
+
+  function read (a: stream ~'a): reader 'a  = { strm = { ptr = 0; size = a.size; members = a.members } }
+
+  val fresh unit: stream 'a
+  ensures { result.ptr = 0 }
+
+  val enstream (a: stream ~'a) (x: ~'a): unit
+  writes { a.ptr }
+  ensures { a.ptr = old a.ptr+1 }
+  ensures { a.size >= a.ptr }
+  ensures { M.get a.members (old a.ptr) = x }
+
+  val destream (a: reader ~'a): 'a
+  requires { a.strm.ptr < a.strm.size }
+  writes { a.strm.ptr }
+  ensures { a.strm.ptr = old a.strm.ptr+1 }
+  ensures { M.get a.strm.members (old a.strm.ptr) = result }
+
+  val promiscuous_destream (a: reader ~'a): 'a 
+  writes { a.strm.ptr }
+  ensures { a.strm.ptr = old a.strm.ptr+1 }
+  ensures { M.get a.strm.members (old a.strm.ptr) = result }
+
+  val view (a: stream 'a): array 'a   ensures { result = view a }
+  val array (a: stream 'a): array 'a  ensures { result = array a }
+  val stream (a: array 'a): stream 'a ensures { result = stream a }
+  val read (a: stream 'a): reader 'a  ensures { result = read a }
+
+  let bar unit =
+    let x = fresh(): stream int in
+    let y = x in
+    enstream x 5;
+    enstream y 7;
+    check { x.ptr = 2 };
+    check { y.ptr = 2 };
+    check { (view x)[0] = 5 };
+    check { (view y)[1] = 7 }
+
+  goal oeps: atleast 5 = 5 -> atleast 5 = 6
+
+use import ref.Ref
+use import array.ArrayPermut
+use import array.ArraySwap
+
+  let sort2 (a: array int)
+(*
+  requires { length a >= 2 }
+ *)
+  ensures { length a >= 2 -> a[0] <= a[1] }
+  ensures { length a >= 2 -> permut_sub a (old a) 0 2 }
+  = if length a >= 2 then if a[0] > a[1] then swap a 0 1 
+
+  let foo unit =
+    let x = fresh(): stream int in
+    let z = view x in
+    sort2 z;
+    enstream x 42;
+    enstream x 23;
+    check { z[0] = 23 };
+    check { z[1] = 42 }
+
+  let magic unit =
+    let x = fresh(): stream int in
+    let y = read x in 
+    let z = promiscuous_destream y in
+    enstream x 42;
+    check { z=42 }
+
+end
+
+theory StreamDifferential
+
+  use import Stream
+  use HighOrd
+
+  function gen (HighOrd.pred 'a) (HighOrd.pred (stream 'a)): stream 'a
+  axiom stream_differential_equation:
+    forall x: HighOrd.pred 'a. forall xs: HighOrd.pred (stream 'a).
+      x (hd (gen x xs)) /\ xs (tl (gen x xs))
+
+  function cons (x:'a) (xs: stream 'a): stream 'a = gen (\y. y=x) (\ys. ys=xs)
+
+  function map (f: HighOrd.func 'a 'b)  (a: stream 'a): stream 'b
+  axiom map_def: forall f: HighOrd.func 'a 'b. forall a: stream 'a. 
+    map f a = cons (f (hd a)) (map f (tl a))
+
+  function zipwith (f: HighOrd.func 'a ('b->'c)) (a: stream 'a) (b: stream 'b): stream 'c
+  axiom zipwith_def: forall f: HighOrd.func 'a ('b->'c). forall a: stream 'a.  forall b: stream 'b.
+    zipwith f a b = cons (f (hd a) (hd b)) (zipwith f (tl a) (tl b))
+
+end
+
+theory StreamInt
+ 
+  use import Stream
+  use import StreamDifferential
+  use import int.Int
+
+  function sum (a: stream int) (b: stream int): stream int 
+    = zipwith (\x y. x+y) a b 
+
+  function minus (a: stream int) (b: stream int): stream int 
+    = zipwith (\x y. x-y) a b 
+
+  function neg (a: stream int) (b: stream int): stream int 
+    = map (\x. -x) a
+
+  function convolution (a: stream int) (b: stream int): stream int
+  axiom convolution_def: 
+    forall a: stream int. forall b: stream int.
+      convolution a b = cons (hd a * hd b) (sum (convolution (tl a) b) (map (\x.x*hd a) (tl b)))
+    
+  function shuffle (a: stream int) (b: stream int): stream int
+  axiom shuffle_def: 
+    forall a: stream int. forall b: stream int.
+      shuffle a b = cons (hd a * hd b) (sum (shuffle (tl a) b) (shuffle a (tl b)))
+    
+end
+
+theory StreamFork
+
+  use import Stream
+  use import map.Map as M
+  use import map.MapEq
+
+  function copyprefix (m: map int 'a) (n: int): map int 'a
+  axiom slice_def:
+    forall m: map int 'a. forall n: int. map_eq_sub m (copyprefix m n) 0 n
+
+  function fork (a: stream 'a): stream 'a = { ptr = a.ptr; size = atleast a.size; members = copyprefix a.members a.ptr }
+
+end

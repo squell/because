@@ -1,0 +1,36 @@
+module OneTimeToggle
+
+  use import bool.Bool
+  type toggle
+
+  function thrown toggle: bool
+
+  val enable (t: toggle): unit
+  ensures { thrown t }
+
+  val block (t: toggle): unit
+  requires { thrown t }
+
+end
+
+module Foo
+
+  use import OneTimeToggle
+  use import ref.Ref
+  use import int.Int
+
+  let foo (t: toggle): int
+  ensures { thrown t -> result = 5 }
+  = if thrown t then 5 else any int
+
+  let bar unit: int
+  ensures { result = 25 }
+  = let x = any ref int in
+    let y = any ref int in
+    let t = any toggle in
+      x := foo t;
+      y := !x * !x;
+      enable t;
+      !y
+
+end

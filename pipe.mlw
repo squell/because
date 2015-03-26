@@ -1,0 +1,218 @@
+(** {1 Streams} 
+
+Streams are represented as non-mutable, since once an element is a part of the
+stream this fact cannot be undone. Length/capacity is non-mutable as well, and
+determines the lower bound of the number of elements on the stream.
+
+This library is otherwise loosely based an the standard Why3 "Array" module
+
+*)
+
+module Stream
+
+  use import int.Int
+  use import map.Map as M
+  use import array.Array
+
+  type stream 'a model { mutable cursor: int; size: int; members: map int 'a }
+    invariant { 0 <= self.size }
+(* causes trouble?
+    invariant { 0 <= self.cursor }
+*)
+
+  function get (a: stream 'a) (i: int): 'a = M.get a.members i
+
+  function atleast (n: int): int
+  axiom atleast_def: forall n: int. atleast n >= n
+
+  function view (a: stream ~'a): array 'a   = { length = a.size; elts = a.members }
+  function array (a: stream ~'a): array 'a  = { length = a.cursor; elts = a.members }
+  function preset (a: array ~'a): stream 'a = { cursor = 0; size = atleast a.length; members = a.elts }
+ 
+  val view (a: stream 'a): array 'a   ensures { result = view a }
+  val array (a: stream 'a): array 'a  ensures { result = array a }
+  val stream (a: array 'a): stream 'a ensures { result = preset a }
+
+  (* These two functions are the same; just different flavours *)
+  val enstream (a: stream ~'a) (x: ~'a): unit
+  writes { a.cursor }
+  ensures { a.cursor = old a.cursor+1 <= a.size }
+  ensures { M.get a.members (old a.cursor) = x }
+
+  let destream (a: stream ~'a): 'a
+  writes { a.cursor }
+  ensures { a.cursor = old a.cursor+1 <= a.size }
+  ensures { M.get a.members (old a.cursor) = result }
+  = let dummy = any 'a in enstream a dummy; dummy
+
+  val block (a: stream ~'a) (buf: int): unit
+  requires { a.cursor < a.size+buf }
+
+  val fresh unit: stream 'a
+  ensures { result.cursor = 0 }
+ 
+end
+
+module LoopCtl
+
+  type looper = { mutable ctl: bool }
+
+  function exec (x: looper): bool = x.ctl
+  
+  val exec (x: looper): bool
+  writes { x.ctl }
+  ensures { result = not x.ctl = old x.ctl }
+  
+end
+
+module Pipe
+
+  use import array.Array as A
+  use import Stream as S
+  use import int.Int
+  use import LoopCtl
+
+  type pipe 'a = { x: stream 'a; y: stream 'a }
+    invariant { self.x.members = self.y.members }
+    invariant { self.x.cursor <= self.x.size }
+    invariant { self.y.cursor <= self.y.size }
+(* how does this influence?
+   - adds proof obligations
+   - blurs distinction if one routine both reads and writes to a pipe ... but that shouldnt
+     happen using unbuffered channels anyway (and *can* happen to buffered, in case we are
+     worried about that)
+   - we can also choose to integrate 'stream' with 'pipe', splitting 'pipe' in
+     "readonly" and "writeonly" variants.
+    invariant { self.x.size = self.y.size }
+*)
+(* only for testing porpoises 
+    invariant { self.y.cursor <= self.x.cursor }
+*)
+
+  function msg (s: pipe ~'a) (n: int): 'a = S.get s.x n
+
+  function sent (s: pipe ~'a): int = s.x.cursor
+  function rcvd (s: pipe ~'a): int = s.y.cursor
+  function unused (s: pipe ~'a): bool = rcvd s = sent s = 0
+
+  function unrcvd (s: pipe ~'a): bool = rcvd s = 0
+  function unsent (s: pipe ~'a): bool = sent s = 0
+
+  function provided (s: pipe ~'a): int = s.x.size
+  function requested (s: pipe ~'a): int = s.y.size
+
+  val unbuffered unit: pipe 'a 
+  ensures { result.x.cursor = result.y.cursor = 0 }
+  ensures { unused result }
+
+  let send (a: pipe ~'a) (value: ~'a)
+  writes { a.x.cursor }
+  ensures { a.x.cursor = old a.x.cursor+1 <= a.x.size }
+  ensures { get a.x (old a.x.cursor) = value }
+    = enstream a.x value
+
+  let recv (a: pipe ~'a): 'a
+  writes { a.y.cursor }
+  ensures { a.y.cursor = old a.y.cursor+1 <= a.y.size }
+  ensures { get a.y (old a.y.cursor) = result }
+    = destream a.y
+
+(* the following are influenced by the linking of x.size and y.size *)
+
+(* also, i am confused as to whether block/wait should list the thing
+   we want to be true in the pre- or postcondition *)
+
+  val block_send (a: pipe ~'a): unit
+  requires { sent a < requested a }
+  ensures { sent a < requested a }
+  val block_recv (a: pipe ~'a): unit
+  requires { rcvd a < provided a }
+  ensures { rcvd a < provided a }
+
+  use import ref.Refint
+
+  let squarer (i: pipe int) (o: pipe int): unit
+  requires { unrcvd i }
+  requires { unsent o }
+  ensures { requested i > 0 }
+  ensures { rcvd i = sent o }
+  ensures { forall n: int. 0 <= n < rcvd i -> msg i n*msg i n = msg o n }
+   = let bla = recv i in
+     send o (bla*bla);
+     while true do
+(*
+       invariant { rcvd i > 0 }
+*)
+       invariant { rcvd i = sent o }
+       invariant { forall n: int. 0 <= n < rcvd i-> msg i n*msg i n = msg o n }
+       let x = recv i in
+       send o (x*x);
+     done
+
+(* this is the 'goroutine' version of squarer; the only thing we change is that
+   we replace references to 'sent' and 'rcvd' (which are 'ephemeral') into
+   'provided/requested' (which are 'lasting', and the same) *)
+
+  val go_squarer (i: pipe int) (o: pipe int): unit
+  requires { unused i }
+  requires { unused o }
+  ensures { requested i > 0 }
+  ensures { provided i = provided o }
+  ensures { forall n: int. 0 <= n < provided i -> msg i n*msg i n = msg o n }
+
+  let summer2 (i: pipe int) (o: pipe int): unit
+  requires { unrcvd i }
+  requires { unsent o }
+  requires { provided i >= 2 }
+  requires { requested o >= 1 }
+  ensures { forall n: int. 0 <= n < sent o -> msg o n = msg i (2*n) + msg i (2*n+1) }
+  ensures { rcvd i <= 2*sent o <= rcvd i+1 }
+  ensures { rcvd i = 2 }
+    = block_recv i;
+      let x = recv i in
+      block_recv i;
+      let y = recv i in
+      block_send o;
+      send o (x+y)
+
+  val go_summer2 (i: pipe int) (o: pipe int): unit
+  requires { unused i }
+  requires { unused o }
+  ensures { provided i >= 2 -> requested o >= 1 -> 
+            forall n: int. 0 <= n < provided o -> msg o n = msg i (2*n) + msg i (2*n+1) }
+  ensures { provided i >= 2 -> requested o >= 1 -> 
+            requested i <= 2*provided o <= requested i+1 }
+(* can't alter this one, otherwise the main function can't send *)
+  ensures { requested i = 2 }
+
+  let test_sum unit =
+    let a = unbuffered(): pipe int in
+    let b = unbuffered(): pipe int in
+    go_summer2 a b;
+    block_send a;
+    send a 2;
+    block_send a;
+    send a 3;
+    block_send a;
+    send a 5;
+    block_recv a;
+    let z = recv b in
+    check { z = 10 }
+
+  let test_sqr unit =
+    let a = unbuffered(): pipe int in
+    let b = unbuffered(): pipe int in
+    go_squarer a b;
+    block_send a;
+    send a 7;
+    block_recv b;
+    let z = recv b in
+    check { z = 49 }
+
+  let bar unit =
+    let p = unbuffered(): pipe int in
+    let y = recv p in
+    send p 5;
+    check { y = 5 }
+
+end
