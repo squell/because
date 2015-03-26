@@ -20,18 +20,19 @@ module Stream
     invariant { 0 <= self.cursor }
 *)
 
-  function get (a: stream 'a) (i: int): 'a = M.get a.members i
+  function get (a: stream ~'a) (i: int): 'a = M.get a.members i
 
   function atleast (n: int): int
   axiom atleast_def: forall n: int. atleast n >= n
 
   function view (a: stream ~'a): array 'a   = { length = a.size; elts = a.members }
   function array (a: stream ~'a): array 'a  = { length = a.cursor; elts = a.members }
-  function preset (a: array ~'a): stream 'a = { cursor = 0; size = atleast a.length; members = a.elts }
+  function stream (a: array ~'a): stream 'a = { cursor = 0; size = atleast a.length; members = a.elts }
+  function preset (a: array ~'a): stream 'a = { cursor = 0; size = a.length; members = a.elts }
  
-  val view (a: stream 'a): array 'a   ensures { result = view a }
-  val array (a: stream 'a): array 'a  ensures { result = array a }
-  val stream (a: array 'a): stream 'a ensures { result = preset a }
+  val view (a: stream ~'a): array 'a   ensures { result = view a }
+  val array (a: stream ~'a): array 'a  ensures { result = array a }
+  val stream (a: array ~'a): stream 'a ensures { result = stream a }
 
   (* These two functions are the same; just different flavours *)
   val enstream (a: stream ~'a) (x: ~'a): unit
@@ -45,6 +46,13 @@ module Stream
   ensures { M.get a.members (old a.cursor) = result }
   = let dummy = any 'a in enstream a dummy; dummy
 
+  function shift (map int ~'a) int: map int 'a
+  axiom shift_def:
+    forall m: map int 'a. forall i j:int. M.get (shift m j) i  = M.get m (i+j)
+
+  function deriv (a: stream ~'a) (n: int): stream 'a =
+    { cursor = a.cursor-n; size = a.size-n; members=shift a.members n }
+
   val block (a: stream ~'a) (buf: int): unit
   requires { a.cursor < a.size+buf }
 
@@ -53,53 +61,30 @@ module Stream
  
 end
 
-module LoopCtl
-
-  type looper = { mutable ctl: bool }
-
-  function exec (x: looper): bool = x.ctl
-  
-  val exec (x: looper): bool
-  writes { x.ctl }
-  ensures { result = not x.ctl = old x.ctl }
-  
-end
-
 module Pipe
 
   use import array.Array as A
   use import Stream as S
   use import int.Int
-  use import LoopCtl
 
   type pipe 'a = { x: stream 'a; y: stream 'a }
     invariant { self.x.members = self.y.members }
-    invariant { self.x.cursor <= self.x.size }
-    invariant { self.y.cursor <= self.y.size }
-(* how does this influence?
-   - adds proof obligations
-   - blurs distinction if one routine both reads and writes to a pipe ... but that shouldnt
-     happen using unbuffered channels anyway (and *can* happen to buffered, in case we are
-     worried about that)
-   - we can also choose to integrate 'stream' with 'pipe', splitting 'pipe' in
-     "readonly" and "writeonly" variants.
-    invariant { self.x.size = self.y.size }
-*)
-(* only for testing porpoises 
-    invariant { self.y.cursor <= self.x.cursor }
-*)
+    invariant { 0 <= self.x.cursor <= self.x.size }
+    invariant { 0 <= self.y.cursor <= self.y.size }
 
   function msg (s: pipe ~'a) (n: int): 'a = S.get s.x n
 
   function sent (s: pipe ~'a): int = s.x.cursor
   function rcvd (s: pipe ~'a): int = s.y.cursor
-  function unused (s: pipe ~'a): bool = rcvd s = sent s = 0
-
-  function unrcvd (s: pipe ~'a): bool = rcvd s = 0
-  function unsent (s: pipe ~'a): bool = sent s = 0
-
   function provided (s: pipe ~'a): int = s.x.size
   function requested (s: pipe ~'a): int = s.y.size
+
+  function unused (s: pipe ~'a): bool = rcvd s = sent s = 0
+  function unrcvd (s: pipe ~'a): bool = rcvd s = 0
+  function unsent (s: pipe ~'a): bool = sent s = 0
+ 
+  function generator (s: pipe ~'a): bool = s.provided > s.requested
+  function iterator  (s: pipe ~'a): bool = s.requested > s.provided
 
   val unbuffered unit: pipe 'a 
   ensures { result.x.cursor = result.y.cursor = 0 }
@@ -117,32 +102,86 @@ module Pipe
   ensures { get a.y (old a.y.cursor) = result }
     = destream a.y
 
-(* the following are influenced by the linking of x.size and y.size *)
-
-(* also, i am confused as to whether block/wait should list the thing
-   we want to be true in the pre- or postcondition *)
-
   val block_send (a: pipe ~'a): unit
   requires { sent a < requested a }
   ensures { sent a < requested a }
+
   val block_recv (a: pipe ~'a): unit
   requires { rcvd a < provided a }
   ensures { rcvd a < provided a }
 
+  (* a pipe can be either readable, writable, or blocked *)
+  function readable (a: pipe ~'a): bool = requested a < provided a
+  val readable (a: pipe ~'a): bool
+  ensures { result     -> requested a < provided a }
+  ensures { not result -> requested a > provided a }
+
+  function writable (a: pipe ~'a): bool = requested a > provided a
+  val writable (a: pipe ~'a): bool
+  ensures { result     -> requested a > provided a }
+  ensures { not result -> requested a < provided a }
+
+  function blocked (a: pipe ~'a): bool = requested a = provided a
+  val blocked (a: pipe ~'a): bool
+  ensures { result <-> requested a = provided a }
+
+end
+
+module StreamLTL
+
+  use import Stream
+  use import HighOrd
+  use import int.Int
+
+  function simple (p: pred 'a) (s: stream 'a): bool = p (get s 0)
+
+  function x (p: pred (stream 'a)) (s: stream 'a): bool 
+    = s.size > 0 /\ p (deriv s 1)
+  function g (p: pred (stream 'a)) (s: stream 'a): bool
+   = forall i: int. 0 <= i < s.size -> p (deriv s i)
+
+use import array.Array
+  constant prv: array int = ( make 4 1 ) [1<-2] [2<-3] [3<-4]
+
+  goal test: simple (\x.x=1) (preset prv)
+  goal test_x: x (simple (\x.x=2)) (preset prv)
+  goal test_g: g (simple (\x.x>=1)) (preset prv)
+
+  function f (p: pred (stream 'a)) (s: stream 'a): bool 
+    = exists i: int [i=0 \/ i=1]. 0 <= i < s.size /\ p (deriv s i)
+  goal test_f: f (simple (\x.x=1)) (preset prv)
+    
+
+end
+
+module PipeLTL
+
+  use import Pipe
+  use import Stream
+  use import HighOrd as H
+
+  function (?) (p: pred (stream 'a)) (s: pipe 'a): bool = p s.x
+
+end
+
+module Test  
+
+  use import Pipe
   use import ref.Refint
+  use import int.Int
 
   let squarer (i: pipe int) (o: pipe int): unit
-  requires { unrcvd i }
-  requires { unsent o }
-  ensures { requested i > 0 }
+  diverges
+  requires { unused i }
+  requires { unused o }
   ensures { rcvd i = sent o }
   ensures { forall n: int. 0 <= n < rcvd i -> msg i n*msg i n = msg o n }
+  ensures { writable i }
    = let bla = recv i in
      send o (bla*bla);
-     while true do
-(*
-       invariant { rcvd i > 0 }
-*)
+     while readable i do
+       invariant { 0 <= rcvd i <= requested i }
+       invariant { 0 <= sent o <= provided o }
        invariant { rcvd i = sent o }
        invariant { forall n: int. 0 <= n < rcvd i-> msg i n*msg i n = msg o n }
        let x = recv i in
@@ -156,48 +195,57 @@ module Pipe
   val go_squarer (i: pipe int) (o: pipe int): unit
   requires { unused i }
   requires { unused o }
-  ensures { requested i > 0 }
-  ensures { provided i = provided o }
-  ensures { forall n: int. 0 <= n < provided i -> msg i n*msg i n = msg o n }
+  ensures { requested i = provided o }
+  ensures { forall n: int. 0 <= n < requested i -> msg i n*msg i n = msg o n }
+  ensures { writable i }
 
-  let summer2 (i: pipe int) (o: pipe int): unit
-  requires { unrcvd i }
-  requires { unsent o }
-  requires { provided i >= 2 }
-  requires { requested o >= 1 }
+  let summer (i: pipe int) (o: pipe int): unit
+  diverges
+  requires { unused i }
+  requires { unused o }
+  requires { writable o } (* what to do ? *)
   ensures { forall n: int. 0 <= n < sent o -> msg o n = msg i (2*n) + msg i (2*n+1) }
   ensures { rcvd i <= 2*sent o <= rcvd i+1 }
-  ensures { rcvd i = 2 }
-    = block_recv i;
+  ensures { writable i }
+  = while readable i do
+    invariant { 0 <= rcvd i <= requested i }
+    invariant { 0 <= sent o <= provided o }
+    invariant { forall n: int. 0 <= n < sent o -> msg o n = msg i (2*n) + msg i (2*n+1) }
+    invariant { rcvd i = 2*sent o }
+      block_recv i;
       let x = recv i in
       block_recv i;
       let y = recv i in
       block_send o;
-      send o (x+y)
+      send o (x+y);
+      assert { let n = sent o-1 in msg o n = msg i (2*n) + msg i (2*n+1) }
+    done
 
-  val go_summer2 (i: pipe int) (o: pipe int): unit
+  val go_summer (i: pipe int) (o: pipe int): unit
   requires { unused i }
   requires { unused o }
-  ensures { provided i >= 2 -> requested o >= 1 -> 
-            forall n: int. 0 <= n < provided o -> msg o n = msg i (2*n) + msg i (2*n+1) }
-  ensures { provided i >= 2 -> requested o >= 1 -> 
-            requested i <= 2*provided o <= requested i+1 }
-(* can't alter this one, otherwise the main function can't send *)
-  ensures { requested i = 2 }
+  ensures { forall n: int. 0 <= n < provided o -> msg o n = msg i (2*n) + msg i (2*n+1) }
+  ensures { requested i <= 2*provided o <= requested i+1 }
+  ensures { writable i }
 
   let test_sum unit =
     let a = unbuffered(): pipe int in
     let b = unbuffered(): pipe int in
-    go_summer2 a b;
+    go_summer a b;
     block_send a;
     send a 2;
     block_send a;
     send a 3;
+    block_recv b;
+    let z = recv b in
+    check { z = 5 };
+    block_send a;
+    send a 4;
     block_send a;
     send a 5;
-    block_recv a;
+    block_recv b;
     let z = recv b in
-    check { z = 10 }
+    check { z = 9 }
 
   let test_sqr unit =
     let a = unbuffered(): pipe int in
