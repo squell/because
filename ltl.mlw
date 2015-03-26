@@ -1,0 +1,74 @@
+(** {1 Streams} 
+
+Streams are represented as non-mutable, since once an element is a part of the
+array this fact cannot be undone. Length/capacity is non-mutable as well, and
+determines the lower bound of the number of elements on the array.
+
+This library is otherwise loosely based an the standard Why3 "Array" module
+
+*)
+
+theory LTL
+
+  use import int.Int
+  use import HighOrd
+
+  type array 'a = Nil | Cons 'a (array 'a)
+
+  function simple (p: pred 'a) (s: array 'a): bool = match s with
+  | Nil -> false
+  | Cons x xs -> p x
+  end
+
+  function x (p: pred (array 'a)) (s: array 'a): bool = match s with
+  | Nil -> false
+  | Cons x xs -> p xs
+  end
+
+  function f (p: pred (array 'a)) (s: array 'a): bool = match s with
+  | Nil -> false
+  | Cons x xs -> p s \/ f p xs
+  end
+
+  function g (p: pred (array 'a)) (s: array 'a): bool = match s with
+  | Nil -> true
+  | Cons x xs -> g p xs /\ p s
+  end
+
+  constant prv: array int = Cons 1 (Cons 2 (Cons 3 (Cons 4 Nil)))
+
+  goal test: simple (\x.x=1) (prv)
+  goal test_x: x (simple(\x.x=2)) (prv)
+  goal test_g: g (simple(\x.x>=1)) (prv)
+  goal test_f: f (simple(\x.x=3)) (prv)
+    
+end
+
+module LTLarray
+
+  use import array.Array
+  use import int.Int
+  use import HighOrd
+
+  constant prv: array int = ( make 4 1 ) [1<-2] [2<-3] [3<-4]
+
+  function deriv (array 'a) (int): array 'a
+  axiom deriv_def: 
+    forall m: array 'a. forall i j: int. (deriv m j)[i] = m[i+j]
+
+  function simple (p: pred 'a) (s: array 'a): bool = p (get s 0)
+
+  function x (p: pred (array 'a)) (s: array 'a): bool
+    = length s > 0 /\ p (deriv s 1)
+  function g (p: pred (array 'a)) (s: array 'a): bool
+   = forall i: int. 0 <= i < length s -> p (deriv s i)
+  function f (p: pred (array 'a)) (s: array 'a): bool
+    = exists i: int. 0 <= i < length s /\ p (deriv s i)
+
+  goal test: simple (\x.x=1) (prv)
+  goal test_x: x (simple (\x.x=2)) (prv)
+  goal test_g: g (simple (\x.x>=1)) (prv)
+  goal test_xg: x (g (simple (\x.x>=2))) (prv)
+  goal test_f: f (simple (\x.x=3)) (prv)
+
+end
