@@ -139,17 +139,18 @@ module StreamLTL
     = s.size > 0 /\ p (deriv s 1)
   function g (p: pred (stream 'a)) (s: stream 'a): bool
    = forall i: int. 0 <= i < s.size -> p (deriv s i)
+  function f (p: pred (stream 'a)) (s: stream 'a): bool 
+(* = exists i: int [i]. 0 <= i < s.size /\ p (deriv s i) *)
+  axiom f_def: forall p: pred (stream 'a).  forall s: stream 'a. f p s <->
+     s.size <> 0 /\ (p s \/ f p (deriv s 1))
 
-use import array.Array
+  use import array.Array
   constant prv: array int = ( make 4 1 ) [1<-2] [2<-3] [3<-4]
 
   goal test: simple (\x.x=1) (preset prv)
   goal test_x: x (simple (\x.x=2)) (preset prv)
   goal test_g: g (simple (\x.x>=1)) (preset prv)
-
-  function f (p: pred (stream 'a)) (s: stream 'a): bool 
-    = exists i: int [i=0 \/ i=1]. 0 <= i < s.size /\ p (deriv s i)
-  goal test_f: f (simple (\x.x=1)) (preset prv)
+  goal test_f: f (simple (\x.x=3)) (preset prv)
     
 
 end
@@ -206,7 +207,7 @@ module Test
   requires { writable o } (* what to do ? *)
   ensures { forall n: int. 0 <= n < sent o -> msg o n = msg i (2*n) + msg i (2*n+1) }
   ensures { rcvd i <= 2*sent o <= rcvd i+1 }
-  ensures { writable i }
+  ensures { writable i }  (* i think this is too permissive *)
   = while readable i do
     invariant { 0 <= rcvd i <= requested i }
     invariant { 0 <= sent o <= provided o }
