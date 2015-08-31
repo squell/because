@@ -1,0 +1,45 @@
+module PermutFacts
+  use import int.Int
+  use import array.Array
+  use import array.ArrayPermut
+
+  lemma permut_trans:
+    forall a b c: array int, l u: int. 
+      permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
+
+  lemma permut_exch_trans:
+    forall a b c d: array int, l u i j: int. 
+      l <= i < u /\ l <= j < u /\
+      permut_sub a b l u /\ exchange b c i j -> permut_sub c d l u -> permut_sub a d l u
+end
+
+module TinySort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+  use import PermutFacts
+  use import int.MinMax
+
+  let rec tinysort (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  ensures { forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+  = 'Start:
+    if length a > pos+1 then (
+       tinysort a (pos+1);
+       if a[pos] > a[pos+1] then (
+         swap a pos (pos+1);
+         assert { forall j: int. pos < j < length a -> a[pos] <= a[j] };
+         tinysort a (pos+1)
+       )
+    )
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = tinysort a 0
+
+end 

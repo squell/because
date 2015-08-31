@@ -1,0 +1,134 @@
+(* Demonstrates that we can use WhyML programs to build mathematical functions *)
+
+module PermutFacts
+  use import int.Int
+  use import array.Array
+  use import array.ArrayPermut
+
+  lemma permut_trans:
+    forall a b c: array int, l u: int. 
+      permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
+
+  lemma permut_strength:
+    forall a b: array int, l u: int.
+      permut_sub a b l u -> permut_all a b
+end
+
+module SelectSort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  let min_index (a: array int) (first limit: int): int
+  requires { 0 <= first < limit <=length a } 
+  ensures { first <= result < limit } 
+  ensures { forall j:int. first <= j < limit -> a[result] <= a[j] }
+  = let min = ref first in
+      for i = first+1 to limit-1 do
+        invariant { first <= !min < limit }
+        invariant { forall j:int. first <= j < i -> a[!min] <= a[j] }
+	if a[i] < a[!min] then min := i 
+      done;
+      !min
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start: 
+    for i = 0 to length a-1 do
+      invariant { forall n m: int. 0 <= n < i <= m < length a -> a[n] <= a[m] }
+      invariant { forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      swap a i (min_index a i (length a))
+    done
+
+end
+
+module ArrayBound
+  use import int.Int
+  use import array.Array
+  use import array.ArrayPermut
+  use import set.SetComprehension
+  use import SelectSort
+
+  let lemma lowerbound_existence (a: array int): unit
+  requires { 0 < length a }
+  ensures { exists y: int. (forall i: int. 0 <= i < length a -> y <= a[i]) }
+  = SelectSort.min_index a 0 (length a); ()
+
+  function lowerbound (a: array int): int =
+    choose (comprehension (\x: int.  forall i: int. 0 <= i < length a -> x <= a[i]))
+
+  lemma lowerbound_def: 
+    forall a: array int, i: int. 0 <= i < length a -> lowerbound a <= a[i]
+
+  lemma lowerbound_after_permut_weak:
+    forall a1 a2: array int. permut_all a1 a2 -> forall i: int. 0 <= i < length a2 -> lowerbound a1 <= a2[i]
+
+end
+
+module StupidSort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+  use import PermutFacts
+  use import ArrayBound
+  use import int.MinMax
+  use SelectSort as S
+
+  (* obviates the need for asserts, but requires E-prover and increases overall time 
+  lemma permut_exch_trans:
+    forall a b c d: array int, l u i j: int. 
+      l <= i < u /\ l <= j < u /\
+      permut_sub a b l u /\ exchange b c i j -> permut_sub c d l u -> permut_sub a d l u
+  *)
+
+  let rec tinysort (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  (* ensures { permut_all (old a) a } *)
+  ensures { forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+  = 'Start:
+    if length a > pos+1 then (
+       tinysort a (pos+1);
+       while a[pos] > a[pos+1] do
+         invariant { a[pos] <= a[pos+1] -> forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+         invariant { permut_sub (at a 'Start) a pos (length a) }
+         variant { a[pos] - at (lowerbound a) 'Start }
+         swap a pos (pos+1);
+         assert { permut_sub (at a 'Start) a pos (length a) };
+         tinysort a (pos+1);
+       done
+    )
+
+  let rec tinysort_g (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  (* ensures { permut_all (old a) a } *)
+  ensures { forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+  = 'Start:
+    if length a > pos+1 then (
+       let ghost minimal = a[S.min_index a 0 (length a)] in
+       tinysort_g a (pos+1);
+       while a[pos] > a[pos+1] do
+         invariant { a[pos] <= a[pos+1] -> forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+         invariant { permut_sub (at a 'Start) a pos (length a) }
+         variant { a[pos] - minimal }
+         swap a pos (pos+1);
+         assert { permut_sub (at a 'Start) a pos (length a) };
+         tinysort_g a (pos+1);
+       done
+    )
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = tinysort a 0
+
+end 

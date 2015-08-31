@@ -1,0 +1,378 @@
+module PermutFacts
+  use import int.Int
+  use import array.Array
+  use import array.ArrayPermut
+
+  lemma permut_trans:
+    forall a b c: array int, l u: int. 
+      permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
+
+  lemma permut_strength:
+    forall a b: array int, l u: int.
+      permut_sub a b l u -> permut_all a b
+end
+
+module SelectSort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  let min_index (a: array int) (first limit: int): int
+  requires { 0 <= first < limit <=length a } 
+  ensures { first <= result < limit } 
+  ensures { forall j:int. first <= j < limit -> a[result] <= a[j] }
+  = let min = ref first in
+      for i = first+1 to limit-1 do
+        invariant { first <= !min < limit }
+        invariant { forall j:int. first <= j < i -> a[!min] <= a[j] }
+	if a[i] < a[!min] then min := i 
+      done;
+      !min
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start: 
+    for i = 0 to length a-1 do
+      invariant { forall n m: int. 0 <= n < i <= m < length a -> a[n] <= a[m] }
+      invariant { forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      swap a i (min_index a i (length a))
+    done
+
+end
+
+module InsertSort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    for i = 0 to length a-1 do
+      invariant { forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      let j = ref i in
+      while !j > 0 && a[!j-1] > a[!j] do
+        variant { !j }
+        invariant { 0 <= !j < length a }
+        invariant { forall n m: int. 0 <= n <= m < !j -> a[n] <= a[m] }
+        invariant { forall n m: int. !j <= n <= m <= i -> a[n] <= a[m] }
+        invariant { forall n m: int. 0 <= n <= !j < m <= i -> a[n] <= a[m] }
+        invariant { permut_all (at a 'Start) a }
+        swap a !j (!j-1);
+        j := !j-1
+      done
+    done
+
+end
+
+module BubbleSort
+  use import int.Int
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    let swapped = ref true in
+    let limit = ref (length a) in
+    while !swapped do
+      invariant { !limit <= length a }
+      invariant { !swapped -> !limit >= 0 }
+      invariant { forall n m: int. 0 <= n <= m < length a /\ !limit <= m -> a[n] <= a[m] }
+      invariant { (not !swapped) -> forall n m: int. 0 <= n <= m < length a -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      variant { !limit }
+      swapped := false;
+      for i = 1 to !limit-1 do
+        invariant { forall n m: int. 0 <= n <= m < length a /\ !limit <= m -> a[n] <= a[m] }
+        invariant { forall n: int. 0 <= n < i-1 -> a[n] <= a[i-1] }
+        invariant { (not !swapped) -> forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
+        invariant { permut_all (at a 'Start) a }
+        if a[i-1] > a[i] then 
+          (swap a (i-1) i;
+           swapped := true);
+      done;
+      limit := !limit-1
+    done
+
+end
+
+module ArrayHeap
+  use import int.Int
+  use import int.ComputerDivision
+  use import array.Array
+
+  function parent (pos: int): int = div (pos-1) 2
+
+  predicate heap (a: array int) (start: int) (size: int) =
+    forall i: int. start <= parent i /\ i < size -> a[i] <= a[parent i]
+
+  predicate almostheap (a: array int) (start: int) (size:int) (mid: int) =
+    (forall i: int. start <= parent i /\ i < size /\ parent i <> mid -> a[i] <= a[parent i]) 
+   /\
+    (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
+
+  predicate nearlyheap (a: array int) (start: int) (size:int) (mid: int) =
+    (forall i: int. start <= parent i /\ i < size /\ i <> mid -> a[i] <= a[parent i]) 
+   /\
+    (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
+
+  (* makes verification faster *)
+  lemma heap_parent_nonneg:
+    forall p: int. 0 <= p -> 0 <= parent p <= p
+
+  inductive descendant int int =
+  | Refl: forall n: int. descendant n n
+  | Step: forall p q: int. p <= q /\ descendant p (parent q) -> descendant p q
+
+  let rec lemma descendant_root0 (pos: int): unit
+  variant { pos }
+  requires { 0 <= pos }
+  ensures { descendant 0 pos }
+  = if pos > 0 then descendant_root0 (parent pos)
+
+  let rec lemma descendant_order (a: array int) (pos: int) (size: int) (i: int): unit
+  variant { i }
+  requires { 0 <= pos <= i < size <= length a } 
+  requires { heap a pos size }
+  requires { descendant pos i }
+  ensures { a[pos] >= a[i] }
+  = if i > pos then descendant_order a pos size (parent i)
+
+  lemma heap_top:
+    forall a: array int, n: int. 0 <= n <= length a /\ heap a 0 n -> forall m: int. 0 <= m < n -> a[0] >= a[m]
+
+end
+
+module HeapSort
+  use import int.Int
+  use import int.ComputerDivision
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+  use import ArrayHeap
+  use import PermutFacts
+
+  let rec pushdown_rec (a: array int) (pos: int) (size: int) (ghost pre: int): unit
+  variant  { size - pos }
+  requires { 0 <= pre <= pos < size <= length a }
+  requires { almostheap a pre size pos }
+  ensures  { heap a pre size }
+  ensures  { permut_sub (old a) a pre size }
+  = let child = ref (2*pos+1) in
+    let cur = ref pos in
+    if !child < size then (
+      if !child+1 < size && a[!child] < a[!child+1] then
+        child := !child+1;
+      if a[!cur] < a[!child] then
+        (swap a !cur !child;
+         assert { heap a pre (!cur+1) };         (* 2*pos+1 works well too, 2*pos+2 less so *)
+         pushdown_rec a !child size pre)
+    )
+
+  let pushdown (a: array int) (pos: int) (size: int): unit
+  requires { 0 <= pos < size <= length a }
+  requires { almostheap a pos size pos }
+  ensures  { heap a pos size }
+  ensures  { permut_sub (old a) a pos size }
+  = 'Start:
+    let child = ref (2*pos+1) in
+    let cur = ref pos in
+    while !child < size do
+      variant { size - !child }
+      invariant { pos <= !cur }
+      invariant { !child < size -> !child = !cur*2+1 }
+      invariant { almostheap a pos size !cur }
+      invariant { !child >= size -> heap a pos size }
+      invariant { permut_sub (at a 'Start) a pos size }
+
+      if !child+1 < size && a[!child] < a[!child+1] then
+        child := !child+1;
+      if a[!cur] < a[!child] then
+        (swap a !cur !child;
+         assert { heap a pos (!cur+1) };
+         assert { heap a pos (!cur*2+2) }; 
+         cur := !child;
+         child := !cur*2+1)
+      else
+         child := size
+    done
+
+  let pullup (a: array int) (pos: int): unit
+  requires { 0 <= pos < length a }
+  requires { heap a 0 pos }
+  ensures { heap a 0 (pos+1) }
+  ensures { permut_sub (old a) a 0 (pos+1) }
+  = 'Start:
+    let cur = ref pos in
+    while !cur > 0 && a[!cur] > a[parent !cur] do
+      invariant { 0 <= !cur <= pos }
+      invariant { nearlyheap a 0 (pos+1) !cur }
+      invariant { permut_sub (at a 'Start) a 0 (pos+1) }
+      variant { !cur }
+      swap a !cur (parent !cur);
+      cur := parent !cur
+    done
+
+  let makeheap (a: array int): unit 
+  ensures { heap a 0 (length a) }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    for i = div (length a) 2-1 downto 0 do
+      invariant { heap a (i+1) (length a) }
+      invariant { permut_all (at a 'Start) a }
+      pushdown a i (length a)
+    done
+
+  let makeheap_up (a: array int): unit 
+  ensures { heap a 0 (length a) }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    for i = 1 to length a-1 do
+      invariant { heap a 0 i }
+      invariant { permut_all (at a 'Start) a }
+      pullup a i
+    done
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    makeheap a;
+    for i = length a-1 downto 1 do
+      invariant { heap a 0 (i+1) }
+      invariant { forall n m: int. i < n <= m < length a -> a[n] <= a[m] }
+      invariant { forall n m: int. 0 <= n <= i < m < length a -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      swap a 0 i;
+      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
+      pushdown a 0 i;
+      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
+    done
+
+end
+
+module QuickSort
+  use import int.Int
+  use import int.ComputerDivision
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  val pivot (first last: int): int
+  requires { first < last }
+  ensures { first <= result < last }
+
+  let rec qsort (a: array int) (first limit:int): unit
+  variant { limit - first }
+  requires { 0 <= first < limit <= length a }
+  ensures { forall i j: int. first <= i <= j < limit -> a[i] <= a[j] }
+  ensures { permut_sub (old a) a first limit }
+  = 'Start:
+    let pivot_index = pivot first limit in
+    let pivot = a[pivot_index] in
+    let p = ref first in
+    let q = ref (limit-1) in
+    while !p <= !q do
+      variant { !q - !p }
+      invariant { first <= !p /\ !q < limit }
+      invariant { forall i: int. first <= i < !p -> a[i] <= pivot }
+      invariant { forall i: int. !q < i < limit -> a[i] >= pivot }
+      invariant { permut_sub (at a 'Start) a first limit }
+      invariant { !p <= !q -> exists i: int. first <= i <= !q /\ a[i] <= pivot }
+      invariant { !p <= !q -> exists i: int. !p <= i < limit /\ a[i] >= pivot }
+      invariant { !p > !q -> first < !p /\ !q+1 < limit }
+      'Entry:
+      while a[!p] < pivot do 
+        variant { limit - !p }
+        invariant { exists i: int. first <= !p <= i < limit /\ a[i] >= pivot }
+        invariant { forall i: int. first <= i < !p -> a[i] <= pivot }
+        invariant { !p >= at !p 'Entry }
+        p := !p+1 
+      done;
+      while a[!q] > pivot do 
+        variant { !q }
+        invariant { exists i: int. first <= i <= !q < limit /\ a[i] <= pivot }
+        invariant { forall i: int. !q < i < limit -> a[i] >= pivot }
+        invariant { !q <= at !q 'Entry }
+        q := !q-1 
+      done;
+      if !p <= !q then (
+        'Swap: swap a !p !q;
+        assert { permut_sub (at a 'Swap) a first limit };
+        assert { forall i: int. first <= i <= !p -> a[i] <= pivot };
+        assert { forall i: int. !q <= i < limit -> a[i] >= pivot };
+        p := !p+1;
+        q := !q-1
+      )
+    done;
+    'Left: if !q > first then qsort a first (!q+1);
+    assert { permut_sub (at a 'Left) a first limit };
+    'Right: if !p < limit-1 then qsort a !p limit;
+    assert { forall i: int. first <= i <= !q -> a[i] <= pivot };
+    assert { forall i: int. !p <= i < limit -> a[i] >= pivot };
+    assert { permut_sub (at a 'Right) a first limit }
+
+  let rec qsort_dnf (a: array int) (first limit: int): unit
+  variant { limit - first }
+  requires { 0 <= first < limit <= length a }
+  ensures { forall i j: int. first <= i <= j < limit -> a[i] <= a[j] }
+  ensures { permut_sub (old a) a first limit }
+  = 'Start:
+    let pivot_index = pivot first limit in
+    let pivot = a[pivot_index] in
+    let red  = ref first in
+    let blue = ref limit in
+    let i = ref (limit-1) in
+    while !red <= !i do
+       variant { !i - !red }
+       invariant { -1 <= !i < !blue }
+       invariant { first <= !red <= !blue <=limit }
+       invariant { forall j: int. first <= j < !red -> a[j] < pivot }
+       invariant { forall j: int. !i < j < !blue -> pivot = a[j] }
+       invariant { forall j: int. !blue <= j < limit -> pivot < a[j] }
+       invariant { permut_sub (at a 'Start) a first limit }
+       invariant { exists j: int. first <= j < limit /\ a[j] = pivot }
+       if a[!i] < pivot then (
+         'Swap: swap a !red !i;
+         assert { permut_sub (at a 'Swap) a first limit };
+         red := !red+1;
+       ) else if pivot < a[!i] then (
+         blue := !blue-1;
+         'Swap: swap a !blue !i;
+         assert { permut_sub (at a 'Swap) a first limit };
+         i := !i-1;
+       ) else (
+         i := !i-1;
+       )
+    done;
+    'Left: if !red > first    then qsort_dnf a first !red;
+    assert { forall j: int. first <= j < !red -> a[j] < pivot };
+    assert { forall j: int. !blue <= j < limit -> pivot < a[j] };
+    assert { forall j: int. !i < j < !blue -> pivot = a[j] };
+    assert { permut_sub (at a 'Left) a first limit };
+    'Right: if !blue < limit then qsort_dnf a !blue limit;
+    assert { forall j: int. first <= j < !red -> a[j] < pivot };
+    assert { forall j: int. !blue <= j < limit -> pivot < a[j] };
+    assert { forall j: int. !i < j < !blue -> pivot = a[j] };
+    assert { permut_sub (at a 'Right) a first limit }
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = if length a > 0 then qsort a 0 (length a)
+
+end

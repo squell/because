@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="4">
+<prover id="0" name="CVC4" version="1.4" timelimit="13" memlimit="1000"/>
+<prover id="1" name="Eprover" version="1.8-001" timelimit="13" memlimit="1000"/>
+<prover id="2" name="Alt-Ergo" version="0.95.2" timelimit="13" memlimit="1000"/>
+<file name="../tiny.mlw">
+<theory name="PermutFacts" sum="fa1532dbec00a41369a66ffa4588a996">
+ <goal name="permut_trans">
+ <proof prover="2"><result status="valid" time="0.17"/></proof>
+ </goal>
+ <goal name="permut_exch_trans">
+ <proof prover="1"><result status="valid" time="1.49"/></proof>
+ </goal>
+</theory>
+<theory name="TinySort" sum="aba74715bd8ff289903e8a8ee4ce6d0f">
+ <goal name="WP_parameter tinysort" expl="VC for tinysort">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter tinysort.1" expl="1. variant decrease">
+  <proof prover="2"><result status="valid" time="0.07"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.2" expl="2. precondition">
+  <proof prover="2"><result status="valid" time="0.07"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.3" expl="3. index in array bounds">
+  <proof prover="2"><result status="valid" time="0.08"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.4" expl="4. index in array bounds">
+  <proof prover="2"><result status="valid" time="0.08"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.5" expl="5. precondition">
+  <proof prover="2"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.6" expl="6. assertion">
+  <proof prover="2"><result status="valid" time="0.33"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.7" expl="7. variant decrease">
+  <proof prover="2"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.8" expl="8. precondition">
+  <proof prover="2"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.9" expl="9. postcondition">
+  <proof prover="2"><result status="valid" time="1.88"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.10" expl="10. postcondition">
+  <proof prover="0"><result status="valid" time="0.88"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.11" expl="11. postcondition">
+  <proof prover="2"><result status="valid" time="0.15"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.12" expl="12. postcondition">
+  <proof prover="2"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.13" expl="13. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter tinysort.14" expl="14. postcondition">
+  <proof prover="2"><result status="valid" time="0.11"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="WP_parameter sort" expl="VC for sort">
+ <proof prover="2"><result status="valid" time="0.12"/></proof>
+ </goal>
+</theory>
+</file>
+</why3session>
