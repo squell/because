@@ -16,6 +16,7 @@ end
 module TinySort
   use import int.Int
   use import ref.Ref
+  use import ref.Refint
   use import array.Array
   use import array.ArraySwap
   use import array.ArrayPermut
@@ -35,6 +36,29 @@ module TinySort
          assert { forall j: int. pos < j < length a -> a[pos] <= a[j] };
          tinysort a (pos+1)
        )
+    )
+
+  let rec tinysort_w (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  ensures { forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+  = 'Start:
+    let ghost iter = ref 2 in
+    let repeat = ref true in
+    if length a > pos+1 then (
+       while !repeat do
+         invariant { not !repeat -> forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+         invariant { permut_sub (at a 'Start) a pos (length a) }
+         invariant { !repeat -> !iter > 0 }
+         invariant { !iter < 2 /\ !repeat -> a[pos] > a[pos+1] }
+         invariant { !iter < 2 -> forall i j: int. pos < i <= j < length a -> a[i] <= a[j] }
+         variant { !iter }
+         swap a pos (pos+1);
+         tinysort a (pos+1);
+         repeat := (a[pos] > a[pos+1]);
+         iter -= 1
+       done
     )
 
   let sort (a: array int): unit
