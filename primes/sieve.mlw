@@ -1,0 +1,35 @@
+module PrimeNumberSieve
+
+use import ref.Ref
+use import int.Int
+use import int.EuclideanDivision
+use import set.Fsetint
+use import set.FsetComprehension
+use import number.Divisibility
+use import number.Prime
+use HighOrd as H
+
+function sieve (n: int) (ns: set int): set int = filter (\x. not (divides n x)) ns
+
+lemma sieve_rem_arg: 
+  forall s: set int, n: int. not (mem n (sieve n s))
+lemma sieve_card_strict: 
+  forall s: set int, n: int. mem n s -> cardinal (sieve n s) < cardinal s
+
+let primes (m: int): set int
+ensures { forall n: int. prime n /\ n < m <-> mem n result }
+ = let src = ref (interval 2 m) in
+   let dst = ref empty in
+   while not (is_empty !src) do
+       variant { cardinal !src }
+       invariant { forall n: int. mem n !dst -> prime n /\ n < m }
+       invariant { forall n k: int. mem n !src /\ 2 <= k /\ divides k n -> mem k !src }
+       invariant { forall n: int. mem n !src -> 2 <= n < m }
+       invariant { forall n: int. prime n /\ n < m -> mem n (union !src !dst) }
+       let p = min_elt !src in
+       dst := add p !dst;
+       src := sieve p !src;
+   done;
+   !dst
+
+end
