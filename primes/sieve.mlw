@@ -1,13 +1,10 @@
 module PrimeNumberSieve
 
 use import ref.Ref
-use import int.Int
-use import int.EuclideanDivision
 use import set.Fsetint
 use import set.FsetComprehension
 use import number.Divisibility
 use import number.Prime
-use HighOrd as H
 
 function sieve (n: int) (ns: set int): set int = filter (\x. not (divides n x)) ns
 
@@ -22,10 +19,10 @@ ensures { forall n: int. prime n /\ n < m <-> mem n result }
    let dst = ref empty in
    while not (is_empty !src) do
        variant { cardinal !src }
-       invariant { forall n: int. mem n !dst -> prime n /\ n < m }
        invariant { forall n k: int. mem n !src /\ 2 <= k /\ divides k n -> mem k !src }
-       invariant { forall n: int. mem n !src -> 2 <= n < m }
        invariant { forall n: int. prime n /\ n < m -> mem n (union !src !dst) }
+       invariant { forall n: int. mem n !dst -> prime n /\ n < m }
+       invariant { forall n: int. mem n !src -> 2 <= n < m }
        let p = min_elt !src in
        dst := add p !dst;
        src := sieve p !src;
