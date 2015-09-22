@@ -1,0 +1,54 @@
+module PrimeNumberSieve
+
+use import ref.Ref
+use import number.Divisibility
+use import number.Prime
+use import list.List
+use import list.Elements
+use import list.Mem
+use import list.Append
+use import list.Length
+clone import list.Sorted with type t = int, predicate le = (<)
+
+let rec interval (a b: int): list int
+variant { b-a}
+ensures { forall x: int. a <= x < b <-> mem x result }
+ensures { sorted result }
+ = if a>=b then Nil else Cons a (interval (a+1) b)
+
+let rec filter (p: int) (nums: list int): list int
+variant { nums }
+ensures { forall n: int. mem n result <-> not (divides p n) /\ mem n nums }
+ensures { sorted nums -> sorted result }
+ensures { length result <= length nums }
+ = match nums with
+   | Nil -> Nil
+   | Cons n ns -> let rest = filter p ns in 
+                  if (divides p n) then rest else (Cons n rest)
+   end
+
+let rec sieve (nums: list int): list int
+requires { sorted nums }
+requires { forall n: int. mem n nums -> 2 <= n }
+requires { forall n k: int. mem n nums /\ 2 <= k /\ divides k n -> mem k nums }
+ensures { forall n: int. mem n result <-> prime n /\ mem n nums }
+ensures { sorted result }
+variant { length nums }
+ = match nums with
+   | Nil -> Nil
+   | Cons n ns -> 
+        assert { prime n };
+        Cons n (sieve (filter n ns))
+   end
+
+let primes (m: int): list int
+ensures { forall x: int. prime x /\ x < m <-> mem x result }
+ensures { sorted result }
+ = sieve (interval 2 m)
+
+use import list.NumOcc
+
+lemma sorted_uniq:
+  forall l: list int, x: int. sorted l -> mem x l -> num_occ x l <= 1
+
+end
