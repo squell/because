@@ -1,0 +1,84 @@
+theory KnasterTarski 
+"Using axiomatic definition of mu"
+
+type elt
+
+use import set.SetComprehension
+
+function intersect (fam: set (set elt)): set elt
+  = comprehension (\x: elt. forall y:set elt. mem y fam -> mem x y)
+
+lemma intersect_fact:
+  forall fam: set (set elt), e:elt. 
+      (forall x: set elt. mem x fam -> mem e x) <-> mem e (intersect fam)
+
+lemma antisymmetry_of_subset:
+  forall a b: set elt. (subset a b /\ subset b a) -> a = b
+
+function f (set elt): set elt
+
+axiom f_monotonic: 
+  forall x y: set elt. subset x y -> subset (f x) (f y)
+
+function postfixpoints: set (set elt) = 
+  comprehension (\x: set elt. subset (f x) x)
+
+constant mu: set elt
+
+axiom mu_def: mu = intersect postfixpoints
+
+lemma fmu_subset_of_all:
+  forall x: set elt. mem x postfixpoints -> subset (f mu) x
+
+lemma fmu_subset_of_mu:
+  subset (f mu) mu
+
+goal fixpoint: exists x:set elt. f x = x
+
+end
+
+theory KnasterTarski0 
+"Using equational definition of mu"
+
+type elt
+
+use import set.SetComprehension
+
+function intersect (fam: set (set elt)): set elt
+  = comprehension (\x: elt. forall y:set elt. mem y fam -> mem x y)
+
+lemma intersect_fact:
+  forall fam: set (set elt), e:elt. 
+      (forall x: set elt. mem x fam -> mem e x) <-> mem e (intersect fam)
+
+lemma antisymmetry_of_subset:
+  forall a b: set elt. (subset a b /\ subset b a) -> a = b
+
+function f (set elt): set elt
+
+axiom f_monotonic: 
+  forall x y: set elt. subset x y -> subset (f x) (f y)
+
+function postfixpoints: set (set elt) = 
+  comprehension (\x: set elt. subset (f x) x)
+
+constant mu: set elt = intersect postfixpoints
+
+lemma fmu_subset_of_all:
+  forall x: set elt. mem x postfixpoints -> subset (f mu) x
+
+lemma fmu_subset_of_mu:
+  subset (f mu) mu
+
+lemma ffmu_subset_of_fmu:
+  subset (f (f mu)) (f mu)
+
+lemma fmu_is_postfix:
+  mem (f mu) postfixpoints
+
+lemma mu_subset_of_fmu:
+  subset mu (f mu)
+
+goal fixpoint: exists x:set elt. f x = x
+
+end
