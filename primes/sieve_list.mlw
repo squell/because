@@ -4,9 +4,7 @@ use import ref.Ref
 use import number.Divisibility
 use import number.Prime
 use import list.List
-use import list.Elements
 use import list.Mem
-use import list.Append
 use import list.Length
 clone import list.Sorted with type t = int, predicate le = (<)
 
@@ -46,9 +44,3 @@ ensures { forall x: int. prime x /\ x < m <-> mem x result }
 ensures { sorted result }
  = sieve (interval 2 m)
 
-use import list.NumOcc
-
-lemma sorted_uniq:
-  forall l: list int, x: int. sorted l -> mem x l -> num_occ x l <= 1
-
-end

@@ -1,16 +1,26 @@
 module ImmutableQueue
 
 use import array.Array
-use import map.Map
+use import map.Map as M
 use import int.Int
 
-type queue 'a model { contents: map int 'a; mutable pointer: int }
+type queue 'a = { contents: map int 'a; mutable pointer: int }
   invariant { 0 <= self.pointer }
 
-function elem (q: queue ~'a): array 'a
-  = { length = q.pointer; elts = q.contents }
+function get (q: queue ~'a) (i: int): 'a = M.get q.contents i
+function elem (q: queue ~'a): map int 'a = q.contents
+function ([]) (q: queue ~'a) (i: int): 'a = get q i
 
-function current (q: queue ~'a): 'a = get q.contents q.pointer
+function current (q: queue ~'a): 'a = M.get q.contents q.pointer
+
+predicate fresh (q: queue ~'a) = q.pointer = 0
+
+val make unit: queue 'a
+ensures { fresh result }
+
+val float (q: queue ~'a): unit
+writes { q.pointer }
+ensures { q.pointer >= old q.pointer }
 
 val enqueue (x: ~'a) (q: queue ~'a): unit
 writes { q.pointer }
@@ -22,5 +32,7 @@ writes { q.pointer }
 ensures { old (current q) = result }
 ensures { q.pointer = old q.pointer + 1 }
  = let x = any 'a in enqueue x q; x
+
+let productive (q: queue ~'a): bool = any bool
 
 end
