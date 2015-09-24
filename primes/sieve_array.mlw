@@ -1,0 +1,133 @@
+module PrimeNumberSieve
+
+use import ref.Ref
+use import number.Divisibility
+use import number.Prime
+use import array.Array
+use import array.ArrayEq
+use set.SetComprehension as S
+
+(* strictly sorted *)
+predicate sorted (a: array int) (l u: int) = 
+  forall i j: int. 0 <= l <= i < j < u <= length a -> a[i] < a[j]
+
+predicate mem (n:int) (a: array int) (l u: int) =
+  exists i: int. 0 <= l <= i < u <= length a /\ a[i] = n
+
+(*
+lemma mem_widening:
+  forall a: array int, n l l2 u2 u: int. 0 <= l <= l2 <= u2 <= u <= length a -> 
+    mem n a l2 u2 -> mem n a l u
+
+function index (n:int) (a: array int) (l u: int): int
+  = S.choose (S.comprehension (\x. l <= x < u /\ a[x] = n))
+
+lemma index_def:
+  forall n l u: int, a: array int. mem n a l u -> a[index n a l u] = n
+*)
+
+let interval (start: int) (a: array int): unit
+writes { a }
+ensures { forall i: int. 0 <= i < length a -> a[i] = start+i }
+ = for i = 0 to length a-1 do
+      invariant { forall j: int. 0 <= j < i -> a[j] = start+j }
+      a[i] <- start+i
+   done
+
+(*
+let filter (p: int) (nums: array int) (beg len: int): int
+requires { 0 <= beg <= len <= length nums }
+ensures { forall i: int. beg <= i < result -> not (divides p nums[i]) /\ exists j: int. i <= j < len /\ nums[i] = (old nums)[j] }
+ensures { forall j: int. beg <= j < len    -> not (divides p (old nums)[j]) -> exists i: int. beg <= i < result /\ nums[i] = (old nums)[j] }
+ensures { beg <= result <= len }
+ = 'S:
+   let i = ref beg in
+   let j = ref beg in
+   while !j < len do
+       variant { len - !j }
+       invariant { beg <= !i <= !j <= len }
+       invariant { forall k: int. beg <= k < !i -> not (divides p nums[k]) }
+       invariant { forall k: int. beg <= k < !i -> exists l: int. k <= l < len /\ nums[k] = (at nums 'S)[l] }
+       invariant { forall k: int. !j <= k < len -> nums[k] = (at nums 'S)[k] }
+(*
+       invariant { forall k: int. beg <= k < !j -> not (divides p (at nums 'S)[k]) -> exists l: int. beg <= l < !i /\ nums[l] = (at nums 'S)[k] }
+*)
+       if not (divides p nums[!j]) then (
+          nums[!i] <- nums[!j];
+          i := !i + 1
+       );
+       j := !j + 1;
+   done;
+   !i
+*)
+
+lemma sorted_extend:
+  forall a: array int, l u: int. sorted a l u -> a[u-1] < a[u] -> sorted a l (u+1)
+
+let filter (p: int) (nums: array int) (beg len: int): int
+requires { 0 <= beg <= len <= length nums }
+requires { sorted nums beg len }
+ensures { forall n: int. mem n nums beg result <-> not (divides p n) /\ mem n (old nums) beg len }
+ensures { sorted nums beg result }
+ensures { beg <= result <= len }
+ensures { array_eq_sub nums (old nums) 0 beg }
+ = 'S:
+   let i = ref beg in
+   let j = ref beg in
+   while !j < len do
+       variant { len - !j }
+       invariant { array_eq_sub nums (at nums 'S) 0 beg }
+       invariant { forall k: int. !j <= k < len -> nums[k] = (at nums 'S)[k] }
+       invariant { sorted nums beg !i /\ (beg < !i <= !j < len -> nums[!i-1] < nums[!j]) }
+       invariant { beg <= !i <= !j <= len }
+       invariant { forall k: int. beg <= k < !i -> not (divides p nums[k]) }
+       invariant { forall k: int. beg <= k < !i -> mem nums[k] (at nums 'S) beg len }
+       invariant { forall k: int. beg <= k < !j -> not (divides p (at nums 'S)[k]) -> mem (at nums 'S)[k] nums beg !i }
+       if not (divides p nums[!j]) then (
+          assert { forall k: int. beg <= k < !j -> not (divides p (at nums 'S)[k]) -> mem (at nums 'S)[k] nums beg !i };
+          'Edit: nums[!i] <- nums[!j];
+          (* some asserts which basically say 'everything before i hasnt changed' ... *)
+          assert { forall n: int. mem n (at nums 'Edit) beg !i -> mem n nums beg !i };
+          assert { forall k: int. beg <= k < !j -> not (divides p (at nums 'S)[k]) -> mem (at nums 'S)[k] nums beg !i };
+          assert { sorted nums beg !i };
+          i := !i + 1;
+       );
+       j := !j + 1;
+   done;
+   !i
+
+let sieve (nums: array int): int
+ensures { forall n: int. mem n nums 0 result <-> prime n /\ n < length nums+2 }
+ = interval 2 nums;
+   let max = length nums+2 in
+   (* this assertion requires Coq *)
+   assert { forall k: int. 2 <= k < max -> mem k nums 0 (length nums) };
+   let m = ref (length nums) in
+   let i = ref 0 in
+   while !i < !m do
+     variant { !m - !i }
+     invariant { 0 <= !i <= !m <= length nums }
+     invariant { sorted nums !i !m }
+     invariant { forall n: int. mem n nums 0 !i -> 2 <= n < max }
+     invariant { forall k: int. 0 <= k < !m -> 2 <= nums[k] < max }
+     invariant { forall n: int. 0 <= n < !i -> prime nums[n] }
+     invariant { forall n k: int. mem n nums !i !m /\ 2 <= k /\ divides k n -> mem k nums !i !m }
+     invariant { forall n: int. prime n /\ n < max -> mem n nums 0 !m }
+     assert { 2 <= nums[!i] < max };
+     assert { prime nums[!i] };
+     'Pre:
+     m := filter nums[!i] nums (!i+1) !m;
+     assert { forall n k: int. mem n nums (!i+1) !m /\ 2 <= k /\ divides k n -> mem k nums (!i+1) !m };
+     assert { forall n: int. 0 <= n < !i -> prime nums[n] };
+     assert { 2 <= nums[!i] < max };
+     assert { prime nums[!i] };
+     assert { forall n: int. mem n nums 0 (!i+1) -> 2 <= n < max };
+     assert { forall k: int. 0 <= k < (!i+1) -> 2 <= nums[k] < max };
+     assert { forall n: int. mem n nums (!i+1) !m -> 2 <= n < max };
+     assert { forall k: int. (!i+1) <= k < !m -> 2 <= nums[k] < max };
+     assert { forall n: int. prime n /\ n < max -> mem n nums 0 (!i+1) \/ mem n nums (!i+1) !m };
+     i := !i+1
+   done;
+   !i
+
+end
