@@ -1,0 +1,25 @@
+module InfinitePrimes
+
+use import int.Int
+use import number.Prime
+use import number.Divisibility
+use import set.Fsetint
+use import ref.Ref
+
+let lemma finite_contradiction (n: int): unit
+requires { forall p: int. prime p -> p <= n }
+ensures { false }
+  = let prod = ref 1 in
+    for i = 2 to n do
+      invariant { forall p: int. prime p /\ p < i -> divides p !prod }
+      invariant { !prod >= (i-1) }
+      prod := !prod * i
+    done;
+    prod := !prod + 1;
+    assert { exists p: int. 1 < p < !prod /\ divides p !prod /\ divides p (!prod - 1) };
+    assert { exists p: int. 1 < p < !prod /\ divides p 1 };
+
+goal Euclid:
+   forall n: int. exists p: int. p > n /\ prime p
+
+end
