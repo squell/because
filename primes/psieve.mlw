@@ -108,7 +108,7 @@ requires { fresh dst }
 diverges
   = let p = dequeue src in
     assume { go_sieve_req src dst };
-    assert { prime p };
+assert { prime p };
     let filt = make(): queue int in
     let dst2 = make(): queue int in
     (* go prefix p dst2 dst *)			(* 1 *)
@@ -133,7 +133,6 @@ invariant { filt.pointer >= 0 }
         invariant { go_prefix_inv p dst2 dst }  (* this should use 'at p ...' if p is mutable *)
         invariant { go_sieve_req src dst }
         invariant { go_sieve_inv src dst }
-invariant { cursor src >= 1 }
 invariant { cursor filt < cursor src }
 
 invariant { forall i: int. 0 <= i < cursor filt -> mem filt[i] src }
@@ -142,28 +141,19 @@ invariant { forall a b: int. 0 <= a < b < cursor filt -> filt[a] < filt[b] }
 invariant { forall i: int. 0 <= i < cursor filt -> p < filt[i] }
 
 invariant { forall i: int. 0 <= i < cursor src -> not (divides p src[i]) -> mem src[i] filt }
-invariant { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt \/ x = p }
-
-invariant { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt }
+invariant { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt }
 
         let n = dequeue src in
         assume { go_sieve_req src dst };
-(* assert { forall i: int. 0 <= i < cursor filt -> mem filt[i] src }; *)
+assert { cursor filt > 0 -> filt[cursor filt-1] < n };
         if not (divides p n) then (
-            assert { p < n };
-            assert { cursor filt > 0 -> filt[cursor filt-1] < n };
             enqueue n filt;
  abstract ensures { monotone filt }
    ()
  end;
  abstract ensures { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt }
- assert { forall i: int. 0 <= i < cursor filt-1 -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt };
- assert { forall x: int. 2 <= x -> divides x n -> not (divides p x) };
- assert { forall i: int. 0 <= i < cursor src-1 -> not (divides p src[i]) -> mem src[i] filt };
- assert { mem n filt };
- assert { forall i: int. 0 <= i < cursor src -> not (divides p src[i]) -> mem src[i] filt };
- assert { forall x: int. 2 <= x -> divides x n -> mem x src };
- assert { forall x: int. 2 <= x -> divides x n -> mem x filt };
+   assert { forall x: int. 2 <= x -> divides x n -> mem x src /\ not (divides p x) };
+   assert { forall x: int. 2 <= x -> divides x n -> mem x filt };
  end;
             assert { "expl:go_sieve_req" go_sieve_req filt dst2 };	 (* 2 *)
             float dst2;                          (* 2 *)
@@ -171,35 +161,22 @@ invariant { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] fil
             assume { go_sieve_inv filt dst2 };   (* 2 *)
             assume { go_prefix_inv p dst2 dst }; (* 1 *)
  abstract ensures { forall i: int. 0 <= i < cursor dst -> mem dst[i] src }
- assert { forall i: int. 0 <= i < cursor filt -> prime filt[i] -> mem filt[i] dst2 };
- assert { mem p src };
- assert { forall i: int. 0 <= i < cursor filt -> mem filt[i] src };
- assert { forall i: int. 0 <= i < dst2.pointer -> mem dst2[i] filt };
- assert { forall i: int. 0 <= i < dst2.pointer -> mem dst2[i] src };
- assert { forall i: int. 0 <= i < cursor dst -> mem dst[i] dst2 \/ dst[i] = p };
- assert { forall i: int. 0 <= i < cursor dst -> mem dst[i] src };
+   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] filt };
+   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] src };
  end;
  abstract ensures { forall i: int. 0 <= i < cursor src -> prime src[i] -> mem src[i] dst }
- assert { forall i: int. 0 <= i < cursor filt -> prime filt[i] -> mem filt[i] dst2 };
- assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt };
- assert { forall z: int. mem z src -> prime z -> (mem z filt \/ z = p) };
- assert { forall z: int. mem z filt -> prime z -> mem z dst2 };
- assert { forall z: int. mem z src -> prime z -> (mem z dst2 \/ z = p) };
- assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst2 };
- abstract ensures { forall z: int. mem z dst2 -> mem z dst }
-    assert { forall i: int. 0 <= i < cursor dst2 -> dst2[i] = dst[i+1] };
-    assert { forall i: int. 0 <= i < cursor dst2 -> exists j: int. 0 <= j < dst.cursor /\ dst2[i] = dst[j] };
-    assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] dst };
- end;
- assert { forall z: int. mem z src -> prime z -> mem z dst };
- assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst };
+   assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt };
+   assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst2 };
+   assert { forall i: int. 0 <= i < cursor dst2 -> dst2[i] = dst[i+1] };
+   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] dst };
  end;
             assert { "expl:go_sieve_inv" go_sieve_inv src dst };     (* ? *)
         ) 
-    done;
-(*
-check { 1 = 2 }
-*)
+    done
+
+goal freek:
+  forall src dst: queue int. go_sieve_inv src dst -> 
+    forall x: int. mem x src /\ prime x <-> mem x dst
 
 (*
 let primes (m: int): set int
