@@ -1,0 +1,222 @@
+module PrimeNumberSieve
+
+use import ref.Ref
+use import array.Array
+use import number.Divisibility
+use import number.Prime
+use import pipe.ImmutableQueue
+use HighOrd as HO
+
+(*
+PREFIX()
+
+ensures-invariant:
+  dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1]
+  cursor dst = cursor src+1
+*)
+
+predicate go_prefix_inv (x: int) (src: queue int) (dst: queue int) =
+ ( dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1] )
+/\
+ ( cursor dst = cursor src+1 )
+
+let prefix (head: int) (src: queue int) (dst: queue int): unit
+requires { fresh src }
+requires { fresh dst }
+diverges
+ =  enqueue head dst;
+    assert { go_prefix_inv head src dst };	(* or check ? *)
+    while productive src do
+        invariant { go_prefix_inv head src dst }
+        let n = dequeue src in
+        enqueue n dst;
+        assert { go_prefix_inv head src dst }
+   done
+
+(*
+requires-invariant:
+  monotone src
+ensures-invariant:
+  monotone dst
+
+channel ownership:
+	reader		writer
+src:	me		(caller)
+dst:	(caller)		child: prefix
+dst2:	child: prefix	child: sieve
+filt:	child: sieve	me
+
+ => inviolable channels: dst and dst2
+*)
+
+predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
+
+predicate monotone (q: queue int) = forall a b: int. 0 <= a < b < cursor q -> q[a] < q[b]
+
+lemma mem_0: forall x: 'a, q: queue 'a. 
+
+  q.pointer >= 0 -> mem x (enqueued x q)
+
+lemma mem_S: forall x y: 'a, q: queue 'a.
+  mem x q -> mem x (enqueued y q)
+
+lemma mono_O: forall q: queue int. fresh q -> monotone q
+lemma mono_S: forall x: int, q: queue int. monotone q -> x > q[cursor q-1] -> monotone (enqueued x q)
+
+(*
+inductive nen 'a (queue 'a) =
+| nen_0: forall x: 'a, q: queue 'a. nen x (enqueued x q)
+| nen_s: forall x y: 'a, q: queue 'a. nen y q -> nen y (enqueued x q)
+*)
+
+predicate all (p: 'a -> bool) (q: queue 'a) = forall i: int. 0 <= i < cursor q -> p q[i]
+
+predicate implies (p: 'a -> bool) (q: 'a -> bool) = forall x: 'a. p x -> q x
+
+goal x: forall p q: queue 'a. 
+   (forall i: int. 0 <= i < cursor p -> exists j: int. 0 <= j < cursor q /\ p[i] = q[j])
+  <->
+   (forall i: int. 0 <= i < cursor p -> mem p[i] q)
+
+goal y: forall p q: queue 'a. 
+   (forall i: int. 0 <= i < cursor p -> mem p[i] q)
+  <->
+   (forall x: 'a. mem x p -> mem x q)
+
+goal z: forall p q: queue 'a. 
+   (forall i: int. 0 <= i < cursor p -> exists j: int. 0 <= j < cursor q /\ p[i] = q[j])
+  <->
+   (forall x: 'a. mem x p -> mem x q)
+
+predicate go_sieve_req (src dst: queue int) =
+   monotone src
+  /\
+   forall i: int. 0 <= i < cursor src -> 2 <= src[i] /\ forall x: int. 2 <= x -> divides x src[i] -> mem x src
+
+predicate go_sieve_inv (src dst: queue int) =
+   cursor dst <= cursor src
+  /\
+   (forall i: int. 0 <= i < cursor dst -> mem dst[i] src /\ prime dst[i])
+  /\
+   monotone dst 
+  /\
+   (forall i: int. 0 <= i < cursor src -> prime src[i] -> mem src[i] dst)
+
+let sieve (src: queue int) (dst: queue int): unit
+requires { fresh src }
+requires { fresh dst }
+diverges
+  = let p = dequeue src in
+    assume { go_sieve_req src dst };
+    assert { prime p };
+    let filt = make(): queue int in
+    let dst2 = make(): queue int in
+    (* go prefix p dst2 dst *)			(* 1 *)
+    float dst2;
+    float dst;
+    assume { go_prefix_inv p dst2 dst }; 
+    
+    (* go sieve filt dst2 *)		        (* 2 *)
+    assert { "expl:go_sieve_req" go_sieve_req filt dst2 };
+    float dst2;
+    float dst;
+    assume { go_sieve_inv filt dst2 };
+    assume { go_prefix_inv p dst2 dst };
+
+    while productive src do
+invariant { src.pointer >= 0 }        
+invariant { dst.pointer >= 0 }        
+invariant { dst2.pointer >= 0 }        
+invariant { filt.pointer >= 0 }        
+        invariant { go_sieve_req filt dst2 }
+        invariant { go_sieve_inv filt dst2 }
+        invariant { go_prefix_inv p dst2 dst }  (* this should use 'at p ...' if p is mutable *)
+        invariant { go_sieve_req src dst }
+        invariant { go_sieve_inv src dst }
+invariant { cursor src >= 1 }
+invariant { cursor filt < cursor src }
+
+invariant { forall i: int. 0 <= i < cursor filt -> mem filt[i] src }
+
+invariant { forall a b: int. 0 <= a < b < cursor filt -> filt[a] < filt[b] }
+invariant { forall i: int. 0 <= i < cursor filt -> p < filt[i] }
+
+invariant { forall i: int. 0 <= i < cursor src -> not (divides p src[i]) -> mem src[i] filt }
+invariant { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt \/ x = p }
+
+invariant { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt }
+
+        let n = dequeue src in
+        assume { go_sieve_req src dst };
+(* assert { forall i: int. 0 <= i < cursor filt -> mem filt[i] src }; *)
+        if not (divides p n) then (
+            assert { p < n };
+            assert { cursor filt > 0 -> filt[cursor filt-1] < n };
+            enqueue n filt;
+ abstract ensures { monotone filt }
+   ()
+ end;
+ abstract ensures { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt }
+ assert { forall i: int. 0 <= i < cursor filt-1 -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt };
+ assert { forall x: int. 2 <= x -> divides x n -> not (divides p x) };
+ assert { forall i: int. 0 <= i < cursor src-1 -> not (divides p src[i]) -> mem src[i] filt };
+ assert { mem n filt };
+ assert { forall i: int. 0 <= i < cursor src -> not (divides p src[i]) -> mem src[i] filt };
+ assert { forall x: int. 2 <= x -> divides x n -> mem x src };
+ assert { forall x: int. 2 <= x -> divides x n -> mem x filt };
+ end;
+            assert { "expl:go_sieve_req" go_sieve_req filt dst2 };	 (* 2 *)
+            float dst2;                          (* 2 *)
+            float dst;                           (* 1 *)
+            assume { go_sieve_inv filt dst2 };   (* 2 *)
+            assume { go_prefix_inv p dst2 dst }; (* 1 *)
+ abstract ensures { forall i: int. 0 <= i < cursor dst -> mem dst[i] src }
+ assert { forall i: int. 0 <= i < cursor filt -> prime filt[i] -> mem filt[i] dst2 };
+ assert { mem p src };
+ assert { forall i: int. 0 <= i < cursor filt -> mem filt[i] src };
+ assert { forall i: int. 0 <= i < dst2.pointer -> mem dst2[i] filt };
+ assert { forall i: int. 0 <= i < dst2.pointer -> mem dst2[i] src };
+ assert { forall i: int. 0 <= i < cursor dst -> mem dst[i] dst2 \/ dst[i] = p };
+ assert { forall i: int. 0 <= i < cursor dst -> mem dst[i] src };
+ end;
+ abstract ensures { forall i: int. 0 <= i < cursor src -> prime src[i] -> mem src[i] dst }
+ assert { forall i: int. 0 <= i < cursor filt -> prime filt[i] -> mem filt[i] dst2 };
+ assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt };
+ assert { forall z: int. mem z src -> prime z -> (mem z filt \/ z = p) };
+ assert { forall z: int. mem z filt -> prime z -> mem z dst2 };
+ assert { forall z: int. mem z src -> prime z -> (mem z dst2 \/ z = p) };
+ assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst2 };
+ abstract ensures { forall z: int. mem z dst2 -> mem z dst }
+    assert { forall i: int. 0 <= i < cursor dst2 -> dst2[i] = dst[i+1] };
+    assert { forall i: int. 0 <= i < cursor dst2 -> exists j: int. 0 <= j < dst.cursor /\ dst2[i] = dst[j] };
+    assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] dst };
+ end;
+ assert { forall z: int. mem z src -> prime z -> mem z dst };
+ assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst };
+ end;
+            assert { "expl:go_sieve_inv" go_sieve_inv src dst };     (* ? *)
+        ) 
+    done;
+(*
+check { 1 = 2 }
+*)
+
+(*
+let primes (m: int): set int
+ensures { forall n: int. prime n /\ n < m <-> mem n result }
+ = let src = ref (interval 2 m) in
+   let dst = ref empty in
+   while not (is_empty !src) do
+       variant { cardinal !src }
+       invariant { forall n k: int. mem n !src /\ 2 <= k /\ divides k n -> mem k !src }
+       invariant { forall n: int. prime n /\ n < m -> mem n (union !src !dst) }
+       invariant { forall n: int. mem n !dst -> prime n /\ n < m }
+       invariant { forall n: int. mem n !src -> 2 <= n < m }
+       let p = min_elt !src in
+       dst := add p !dst;
+       src := sieve p !src;
+   done;
+   !dst
+*)
+
+end
