@@ -23,17 +23,6 @@ diverges
         assert { go_prefix_inv head src dst }
    done
 
-(*
-channel ownership:
-	reader		writer
-src:	me		(caller)
-dst:	(caller)		child: prefix
-dst2:	child: prefix	child: sieve
-filt:	child: sieve	me
-
- => inviolable channels: dst and dst2
-*)
-
 predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
 
 lemma mem_0: forall x: 'a, q: queue 'a. 
@@ -63,6 +52,17 @@ ensures { forall i: int. 0 <= i < cursor src -> exists j: int [i+1]. 0 <= j < cu
 lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int. 
   cursor dst > 0 -> go_prefix_inv x src dst ->
   forall y: int.  mem y dst <-> mem y src \/ x = y
+
+(*
+channel ownership:
+	reader		writer
+src:	me		(caller)
+dst:	(caller)		child: prefix
+dst2:	child: prefix	child: sieve
+filt:	child: sieve	me
+
+ => inviolable channels: dst and dst2
+*)
 
 let sieve (src: queue int) (dst: queue int): unit
 requires { fresh src }
@@ -122,22 +122,50 @@ assert { forall x: int. mem x src /\ not (divides p x) /\ x < n -> mem x filt };
         ) 
     done
 
+use import ref.Refint
+
+predicate go_generator_inv (out: queue int) =
+  forall i: int. 0 <= i < cursor out -> out[i] = 2+i
+
+let generator (out: queue int) =
+requires { fresh out }
+diverges
+    let x = ref 2 in
+    while true do 
+        invariant { go_generator_inv out }
+        invariant { !x = 2 + cursor out }
+        enqueue !x out;
+        assert { go_generator_inv out };
+        x += 1
+    done
+
 (*
-let primes (m: int): set int
-ensures { forall n: int. prime n /\ n < m <-> mem n result }
- = let src = ref (interval 2 m) in
-   let dst = ref empty in
-   while not (is_empty !src) do
-       variant { cardinal !src }
-       invariant { forall n k: int. mem n !src /\ 2 <= k /\ divides k n -> mem k !src }
-       invariant { forall n: int. prime n /\ n < m -> mem n (union !src !dst) }
-       invariant { forall n: int. mem n !dst -> prime n /\ n < m }
-       invariant { forall n: int. mem n !src -> 2 <= n < m }
-       let p = min_elt !src in
-       dst := add p !dst;
-       src := sieve p !src;
-   done;
-   !dst
+channel ownership:
+	reader		writer
+inp:	child:sieve	child:generator
+outp:	me		child:sieve
+
+ => inviolable channels: inp
 *)
 
+constant max_prime: int = 25000
+
+let main unit =
+diverges
+    let outp = make(): queue int in
+    let inp  = make(): queue int in
+    (* go func() { ... } *)
+    while productive outp do
+invariant { inp.pointer >= 0 }
+invariant { outp.pointer >= 0 }
+        invariant { go_sieve_inv inp outp }
+        let n = dequeue outp in 
+        assume { go_generator_inv inp };
+        assert { go_sieve_req inp outp };
+        assume { go_sieve_inv inp outp };
+        if n >= max_prime then ();
+        assert { prime n };
+    done
+
 end
+
