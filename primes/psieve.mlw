@@ -40,9 +40,9 @@ predicate go_sieve_req (src dst: queue int) =
    forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
 
 predicate go_sieve_inv (src dst: queue int) =
-   forall x: int. mem x dst <-> mem x src /\ prime x
-
-(* ! note: the above is too loose now; e.g. how many times is the function allowed to emit 2? *)
+   (forall x: int. mem x dst <-> mem x src /\ prime x)
+  /\
+   (forall i j: int. 0 <= i < j < cursor dst -> dst[i] <> dst[j])
 
 let lemma go_prefix_inv_step (x: int) (src dst: queue int): unit
 requires { go_prefix_inv x src dst }
@@ -98,11 +98,13 @@ invariant { filt.pointer >= 0 }
 
 invariant { forall x: int. mem x src /\ not (divides p x) -> mem x filt }
 invariant { forall x: int. mem x filt -> mem x src /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
+invariant { forall x: int. mem x filt -> p <> x }
 
         let n = dequeue src in
         assume { go_sieve_req src dst };
         if not (divides p n) then (
 assert { forall x: int. mem x src /\ not (divides p x) /\ x < n -> mem x filt };
+assert { forall x: int. mem x (enqueued n filt) -> p <> x };
             enqueue n filt;
  abstract ensures { forall x: int. mem x filt -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
    ()
