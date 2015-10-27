@@ -1,19 +1,9 @@
 module PrimeNumberSieve
 
-use import ref.Ref
-use import array.Array
 use import number.Divisibility
 use import number.Prime
 use import pipe.ImmutableQueue
 use HighOrd as HO
-
-(*
-PREFIX()
-
-ensures-invariant:
-  dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1]
-  cursor dst = cursor src+1
-*)
 
 predicate go_prefix_inv (x: int) (src: queue int) (dst: queue int) =
  ( dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1] )
@@ -34,11 +24,6 @@ diverges
    done
 
 (*
-requires-invariant:
-  monotone src
-ensures-invariant:
-  monotone dst
-
 channel ownership:
 	reader		writer
 src:	me		(caller)
@@ -51,56 +36,33 @@ filt:	child: sieve	me
 
 predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
 
-predicate monotone (q: queue int) = forall a b: int. 0 <= a < b < cursor q -> q[a] < q[b]
-
 lemma mem_0: forall x: 'a, q: queue 'a. 
-
-  q.pointer >= 0 -> mem x (enqueued x q)
+  cursor q >= 0 -> mem x (enqueued x q)
 
 lemma mem_S: forall x y: 'a, q: queue 'a.
   mem x q -> mem x (enqueued y q)
 
+predicate monotone (q: queue int) = forall a b: int. 0 <= a < b < cursor q -> q[a] < q[b]
+
 lemma mono_O: forall q: queue int. fresh q -> monotone q
 lemma mono_S: forall x: int, q: queue int. monotone q -> x > q[cursor q-1] -> monotone (enqueued x q)
 
-(*
-inductive nen 'a (queue 'a) =
-| nen_0: forall x: 'a, q: queue 'a. nen x (enqueued x q)
-| nen_s: forall x y: 'a, q: queue 'a. nen y q -> nen y (enqueued x q)
-*)
-
-predicate all (p: 'a -> bool) (q: queue 'a) = forall i: int. 0 <= i < cursor q -> p q[i]
-
-predicate implies (p: 'a -> bool) (q: 'a -> bool) = forall x: 'a. p x -> q x
-
-goal x: forall p q: queue 'a. 
-   (forall i: int. 0 <= i < cursor p -> exists j: int. 0 <= j < cursor q /\ p[i] = q[j])
-  <->
-   (forall i: int. 0 <= i < cursor p -> mem p[i] q)
-
-goal y: forall p q: queue 'a. 
-   (forall i: int. 0 <= i < cursor p -> mem p[i] q)
-  <->
-   (forall x: 'a. mem x p -> mem x q)
-
-goal z: forall p q: queue 'a. 
-   (forall i: int. 0 <= i < cursor p -> exists j: int. 0 <= j < cursor q /\ p[i] = q[j])
-  <->
-   (forall x: 'a. mem x p -> mem x q)
-
 predicate go_sieve_req (src dst: queue int) =
-   monotone src
-  /\
-   forall i: int. 0 <= i < cursor src -> 2 <= src[i] /\ forall x: int. 2 <= x -> divides x src[i] -> mem x src
+   forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
 
 predicate go_sieve_inv (src dst: queue int) =
-   cursor dst <= cursor src
-  /\
-   (forall i: int. 0 <= i < cursor dst -> mem dst[i] src /\ prime dst[i])
-  /\
-   monotone dst 
-  /\
-   (forall i: int. 0 <= i < cursor src -> prime src[i] -> mem src[i] dst)
+   forall x: int. mem x dst <-> mem x src /\ prime x
+
+(* ! note: the above is too loose now; e.g. how many times is the function allowed to emit 2? *)
+
+let lemma go_prefix_inv_step (x: int) (src dst: queue int): unit
+requires { go_prefix_inv x src dst }
+ensures { forall i: int. 0 <= i < cursor src -> exists j: int [i+1]. 0 <= j < cursor dst /\ dst[j] = src[i] }
+ = assert { forall i: int. 0 <= i < cursor src -> src[i] = dst[i+1] }
+
+lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int. 
+  cursor dst > 0 -> go_prefix_inv x src dst ->
+  forall y: int.  mem y dst <-> mem y src \/ x = y
 
 let sieve (src: queue int) (dst: queue int): unit
 requires { fresh src }
@@ -133,25 +95,15 @@ invariant { filt.pointer >= 0 }
         invariant { go_prefix_inv p dst2 dst }  (* this should use 'at p ...' if p is mutable *)
         invariant { go_sieve_req src dst }
         invariant { go_sieve_inv src dst }
-invariant { cursor filt < cursor src }
 
-invariant { forall i: int. 0 <= i < cursor filt -> mem filt[i] src }
-
-invariant { forall a b: int. 0 <= a < b < cursor filt -> filt[a] < filt[b] }
-invariant { forall i: int. 0 <= i < cursor filt -> p < filt[i] }
-
-invariant { forall i: int. 0 <= i < cursor src -> not (divides p src[i]) -> mem src[i] filt }
-invariant { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt }
+invariant { forall x: int. mem x src /\ not (divides p x) -> mem x filt }
+invariant { forall x: int. mem x filt -> mem x src /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
 
         let n = dequeue src in
         assume { go_sieve_req src dst };
-assert { cursor filt > 0 -> filt[cursor filt-1] < n };
         if not (divides p n) then (
             enqueue n filt;
- abstract ensures { monotone filt }
-   ()
- end;
- abstract ensures { forall i: int. 0 <= i < cursor filt -> forall x: int. 2 <= x -> divides x filt[i] -> mem x filt }
+ abstract ensures { forall x: int. mem x filt -> forall d: int. 2 <= d -> divides d x -> mem d filt }
    assert { forall x: int. 2 <= x -> divides x n -> mem x src /\ not (divides p x) };
    assert { forall x: int. 2 <= x -> divides x n -> mem x filt };
  end;
@@ -160,23 +112,17 @@ assert { cursor filt > 0 -> filt[cursor filt-1] < n };
             float dst;                           (* 1 *)
             assume { go_sieve_inv filt dst2 };   (* 2 *)
             assume { go_prefix_inv p dst2 dst }; (* 1 *)
- abstract ensures { forall i: int. 0 <= i < cursor dst -> mem dst[i] src }
-   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] filt };
-   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] src };
+ abstract ensures { forall x: int. mem x dst -> mem x src }
+   (* these are not necessary, but speed up the prover *)
+   assert { forall x: int. mem x dst2 -> mem x filt };
+   assert { forall x: int. mem x dst2 -> mem x src };
  end;
- abstract ensures { forall i: int. 0 <= i < cursor src -> prime src[i] -> mem src[i] dst }
-   assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] filt };
-   assert { forall i: int. 1 <= i < cursor src -> prime src[i] -> mem src[i] dst2 };
-   assert { forall i: int. 0 <= i < cursor dst2 -> dst2[i] = dst[i+1] };
-   assert { forall i: int. 0 <= i < cursor dst2 -> mem dst2[i] dst };
+ abstract ensures { forall x: int. mem x src -> prime x -> mem x dst }
+   ()
  end;
             assert { "expl:go_sieve_inv" go_sieve_inv src dst };     (* ? *)
         ) 
     done
-
-goal freek:
-  forall src dst: queue int. go_sieve_inv src dst -> 
-    forall x: int. mem x src /\ prime x <-> mem x dst
 
 (*
 let primes (m: int): set int
