@@ -15,7 +15,6 @@ end
 module Promise
 
 use import int.Int
-use import ref.Ref
 
 type obligation
 
@@ -32,9 +31,30 @@ ensures { satisfied o }
 
 end
 
+module PromiseMore
+
+use import int.Int
+use import Promise as P
+
+type obligation model { mutable obl: P.obligation }
+
+function timeout (x: obligation): int = P.timeout x.obl
+predicate satisfied (x: obligation) = P.satisfied x.obl
+
+val promise (t: int): obligation
+requires { t >= 0 }
+ensures { timeout result >= t }
+
+val satisfy (o: obligation): unit
+writes { o.obl }
+ensures { satisfied (old o) }
+ensures { timeout o >= timeout (old o) }
+
+end
+
 module Test
 
-use import Promise
+use import PromiseMore
 use import int.Int
 use import ref.Ref
 use HighOrd as HO
@@ -45,14 +65,15 @@ let test_reach () =
 'L:
     for x = 1 to 100 do
         invariant { x = !T.ticks - (at !T.ticks 'L) + 1 } (* because this is a demo *)
-        invariant { !T.ticks - at !T.ticks 'L > timeout reachme -> satisfied reachme } (* proposed *)
-        invariant { not satisfied reachme -> !T.ticks - at !T.ticks 'L <= timeout reachme } (* proposed *)
-        invariant { x > 7 -> satisfied reachme } (* user-supplied *)
+        invariant { !T.ticks - at !T.ticks 'L > timeout (at reachme 'L) -> satisfied (at reachme 'L) } (* proposed *)
+        invariant { not satisfied (at reachme 'L) -> !T.ticks - at !T.ticks 'L <= timeout (at reachme 'L) } (* proposed *)
+        invariant { x > 7 -> satisfied (at reachme 'L) } (* user-supplied *)
+        invariant { x <= 7 -> reachme = (at reachme 'L) }
         if x >= 7 then (
             satisfy reachme
         );
         T.tick();
     done;
-    check { satisfied reachme }
+    check { satisfied (at reachme 'L) }
 
 end
