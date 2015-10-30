@@ -58,21 +58,26 @@ use import PromiseMore
 use import int.Int
 use import ref.Ref
 use HighOrd as HO
-use TickCounter as T
+
+predicate mooi int
+axiom mooi_partialdef: forall i. exists j. i <= j < i+7 /\ mooi j
+lemma mooi_1_to_7: exists i. 1 <= i < 8 /\ mooi i
 
 let test_reach () =
-    let reachme = promise 50 in
+    let reachme = any obligation in
 'L:
-    for x = 1 to 100 do
-        invariant { x = !T.ticks - (at !T.ticks 'L) + 1 } (* because this is a demo *)
-        invariant { !T.ticks - at !T.ticks 'L > timeout (at reachme 'L) -> satisfied (at reachme 'L) } (* proposed *)
-        invariant { not satisfied (at reachme 'L) -> !T.ticks - at !T.ticks 'L <= timeout (at reachme 'L) } (* proposed *)
-        invariant { x > 7 -> satisfied (at reachme 'L) } (* user-supplied *)
-        invariant { x <= 7 -> reachme = (at reachme 'L) }
-        if x >= 7 then (
+    let y = ref 1 in
+    for x = 1 to 10000000 do
+        invariant { (exists y. 1 <= y < x /\ mooi y) -> satisfied (at reachme 'L) }
+        invariant { reachme = (at reachme 'L) \/ satisfied (at reachme 'L) }
+        invariant { !y <= x }
+        (* pseudovariant { 100 - !y } { satisfied (at reachme 'L) } *)
+'B:
+        if mooi x then (
             satisfy reachme
         );
-        T.tick();
+        y := !y + 1;
+        assert { "expl:conditional decrease" not (at (satisfied (at reachme 'L)) 'B) -> 0 <= (100- !y) < (at (100- !y) 'B) };
     done;
     check { satisfied (at reachme 'L) }
 
