@@ -152,22 +152,30 @@ outp:	me		child:sieve
 
 constant max_prime: int = 25000
 
+exception Break
+
 let main unit =
-diverges
     let outp = make(): queue int in
     let inp  = make(): queue int in
     (* go func() { ... } *)
+  try
     while productive outp do
 invariant { inp.pointer >= 0 }
 invariant { outp.pointer >= 0 }
         invariant { go_sieve_inv inp outp }
+        variant { max_prime - outp[cursor outp-1] }
+'Begin:
         let n = dequeue outp in 
         assume { go_generator_inv inp };
         assert { go_sieve_req inp outp };
         assume { go_sieve_inv inp outp };
-        if n >= max_prime then ();
+        if n >= max_prime then 
+            raise Break;
         assert { prime n };
     done
+  with Break ->
+    ()
+  end
 
 end
 
