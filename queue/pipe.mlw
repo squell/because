@@ -1,4 +1,4 @@
-module ImmutableQueue
+module PrototypeQueue
 
 use import array.Array
 use import map.Map as M
@@ -38,15 +38,27 @@ ensures { q.pointer = old q.pointer + 1 }
 
 function cursor (q: queue ~'a): int = q.pointer
 
+predicate ready (q: queue ~'a)
+predicate closed (q: queue ~'a)
+
+axiom queue_exclusion: forall q: queue 'a. not (ready q /\ closed q)
+
+predicate divergence
+
 val enqueue (x: ~'a) (q: queue ~'a): unit
 writes { q.pointer }
+requires { divergence \/ ready q }
 ensures { q = enqueued x (old q) }
 
 let dequeue (q: queue ~'a): 'a
 writes { q.pointer }
+requires { divergence \/ ready q }
 ensures { q = enqueued result (old q) }
  = let x = any 'a in enqueue x q; x
 
-let productive (q: queue ~'a): bool = any bool
+val productive (q: queue ~'a): bool
+requires { divergence \/ ready q \/ closed q }
+ensures { result <-> ready q }
+ensures { not result <-> closed q }
 
 end

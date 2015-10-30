@@ -2,7 +2,7 @@ module PrimeNumberSieve
 
 use import number.Divisibility
 use import number.Prime
-use import pipe.ImmutableQueue
+use import pipe.PrototypeQueue
 use HighOrd as HO
 
 predicate go_prefix_inv (x: int) (src: queue int) (dst: queue int) =
@@ -14,14 +14,15 @@ let prefix (head: int) (src: queue int) (dst: queue int): unit
 requires { fresh src }
 requires { fresh dst }
 diverges
- =  enqueue head dst;
+ =  assume { divergence };
+    enqueue head dst;
     assert { go_prefix_inv head src dst };	(* or check ? *)
     while productive src do
         invariant { go_prefix_inv head src dst }
         let n = dequeue src in
         enqueue n dst;
         assert { go_prefix_inv head src dst }
-   done
+    done;
 
 predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
 
@@ -132,6 +133,7 @@ predicate go_generator_inv (out: queue int) =
 let generator (out: queue int) =
 requires { fresh out }
 diverges
+    assume { divergence };
     let x = ref 2 in
     while true do 
         invariant { go_generator_inv out }
