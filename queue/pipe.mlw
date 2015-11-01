@@ -20,6 +20,7 @@ ensures { fresh result }
 val float (q: queue ~'a): unit
 writes { q.pointer }
 ensures { q.pointer >= 0 }
+(* ensures { q.pointer >= old q.pointer >= 0 } *)
 
 function current (q: queue ~'a): 'a = M.get q.contents q.pointer
 

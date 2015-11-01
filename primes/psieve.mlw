@@ -1,9 +1,76 @@
+module Mem
+
+use import pipe.PrototypeQueue
+use import int.Int
+
+predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
+
+lemma mem_0: forall x: 'a, q: queue 'a. 
+  cursor q >= 0 -> mem x (enqueued x q)
+
+lemma mem_S: forall x y: 'a, q: queue 'a.
+  mem x q -> mem x (enqueued y q)
+
+end
+
+theory Induct
+
+use import pipe.PrototypeQueue
+use import int.Int
+use HighOrd
+
+(* this is fine for 'single' channels, but what if two channels react to eachother? *)
+
+predicate chaninv (p: queue 'a->bool) (q: queue 'a) =
+  forall i: int. 0 <= i < cursor q ->
+    p { contents = q.contents; pointer = i }
+
+end
+
+theory Occ
+
+use import pipe.PrototypeQueue
+use import int.Int
+use map.Occ as M
+use import Mem
+
+function occ (e: 'a) (q: queue 'a): int = M.occ e q.contents 0 (q.cursor)
+
+lemma occ_bounds:
+  forall x: 'a, q: queue 'a. 0 <= cursor q -> 0 <= occ x q <= cursor q
+
+lemma occ_mem_correspondence:
+  forall x: 'a, q: queue 'a. mem x q <-> occ x q > 0 
+
+end
+
+theory OrderedQueue
+
+use pipe.PrototypeQueue as Q
+use import int.Int
+
+type t
+predicate rel t t
+
+axiom rel_transitive:
+  forall x y z: t. rel x y /\ rel y z -> rel x z
+
+predicate ordered (q: Q.queue t) = forall a b: int. 0 <= a < b < Q.cursor q -> rel (Q.get q a) (Q.get q b)
+
+lemma mono_O: forall q: Q.queue t. Q.fresh q -> ordered q
+lemma mono_S: forall x: t, q: Q.queue t. ordered q -> rel (Q.get q (Q.cursor q-1)) x -> ordered (Q.enqueued x q)
+
+end
+
+
+
 module PrimeNumberSieve
 
 use import number.Divisibility
 use import number.Prime
-use import pipe.PrototypeQueue
-use HighOrd as HO
+use import pipe.PrototypeQueue as Q
+
+axiom fiat: divergence
 
 predicate go_prefix_inv (x: int) (src: queue int) (dst: queue int) =
  ( dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1] )
@@ -14,36 +81,16 @@ let prefix (head: int) (src: queue int) (dst: queue int): unit
 requires { fresh src }
 requires { fresh dst }
 diverges
- =  assume { divergence };
-    enqueue head dst;
+ =  enqueue head dst;
     assert { go_prefix_inv head src dst };	(* or check ? *)
-    while productive src do
+    while true do
         invariant { go_prefix_inv head src dst }
         let n = dequeue src in
         enqueue n dst;
         assert { go_prefix_inv head src dst }
     done;
 
-predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
-
-lemma mem_0: forall x: 'a, q: queue 'a. 
-  cursor q >= 0 -> mem x (enqueued x q)
-
-lemma mem_S: forall x y: 'a, q: queue 'a.
-  mem x q -> mem x (enqueued y q)
-
-predicate monotone (q: queue int) = forall a b: int. 0 <= a < b < cursor q -> q[a] < q[b]
-
-lemma mono_O: forall q: queue int. fresh q -> monotone q
-lemma mono_S: forall x: int, q: queue int. monotone q -> x > q[cursor q-1] -> monotone (enqueued x q)
-
-predicate go_sieve_req (src dst: queue int) =
-   forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
-
-predicate go_sieve_inv (src dst: queue int) =
-   (forall x: int. mem x dst <-> mem x src /\ prime x)
-  /\
-   (forall i j: int. 0 <= i < j < cursor dst -> dst[i] <> dst[j])
+use import Mem
 
 let lemma go_prefix_inv_step (x: int) (src dst: queue int): unit
 requires { go_prefix_inv x src dst }
@@ -54,6 +101,14 @@ lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int.
   cursor dst > 0 -> go_prefix_inv x src dst ->
   forall y: int.  mem y dst <-> mem y src \/ x = y
 
+predicate go_sieve_req (src dst: queue int) =
+   forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
+
+predicate go_sieve_inv (src dst: queue int) =
+   (forall x: int. mem x dst <-> mem x src /\ prime x)
+  /\
+   (forall i j: int. 0 <= i < j < cursor dst -> dst[i] <> dst[j])
+
 (*
 channel ownership:
 	reader		writer
@@ -63,6 +118,10 @@ dst2:	child: prefix	child: sieve
 filt:	child: sieve	me
 
  => inviolable channels: dst and dst2
+*)
+
+(* it is interesting to see how this affects CVC4 
+clone OrderedQueue with type t = int, predicate rel = (<)
 *)
 
 let sieve (src: queue int) (dst: queue int): unit
@@ -86,7 +145,7 @@ assert { prime p };
     assume { go_sieve_inv filt dst2 };
     assume { go_prefix_inv p dst2 dst };
 
-    while productive src do
+    while true do
 invariant { src.pointer >= 0 }        
 invariant { dst.pointer >= 0 }        
 invariant { dst2.pointer >= 0 }        
@@ -125,15 +184,14 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
         ) 
     done
 
-use import ref.Refint
-
 predicate go_generator_inv (out: queue int) =
   forall i: int. 0 <= i < cursor out -> out[i] = 2+i
+
+use import ref.Refint
 
 let generator (out: queue int) =
 requires { fresh out }
 diverges
-    assume { divergence };
     let x = ref 2 in
     while true do 
         invariant { go_generator_inv out }
@@ -152,6 +210,11 @@ outp:	me		child:sieve
  => inviolable channels: inp
 *)
 
+let lemma go_generator_inv_eq (x: int) (q: queue int)
+requires { go_generator_inv q }
+ensures { 2 <= x < cursor q+2 <-> mem x q }
+ = assert { 2 <= x < cursor q+2 -> q[x-2] = x }
+
 constant max_prime: int = 25000
 
 exception Break
@@ -161,19 +224,48 @@ let main unit =
     let inp  = make(): queue int in
     (* go func() { ... } *)
   try
-    while productive outp do
+    while true do
 invariant { inp.pointer >= 0 }
 invariant { outp.pointer >= 0 }
+        invariant { go_generator_inv inp }
         invariant { go_sieve_inv inp outp }
-        variant { max_prime - outp[cursor outp-1] }
+        invariant { go_sieve_req inp outp }
+        variant { max_prime - cursor inp }   (* TODO: try different variants *)
 'Begin:
-        let n = dequeue outp in 
+	float inp;
         assume { go_generator_inv inp };
         assert { go_sieve_req inp outp };
+        let n = dequeue outp in 
         assume { go_sieve_inv inp outp };
         if n >= max_prime then 
             raise Break;
-        assert { prime n };
+        check { prime n };
+        (* this assert speeds up the next assert -- not necessary *)
+        assert { mem n (at inp 'Begin) -> mem n (at outp 'Begin) };
+        (* this assert was guessed (see below) -- not necessary if we make 'float' more-defined *)
+        assert { not (mem n (at inp 'Begin)) };
+(*
+  (* the following mess is not necessary -- it is just to guess what CVC4 is up to *)
+  abstract ensures { max_prime >= at (cursor inp) 'Begin }
+    abstract ensures { not (mem n (at inp 'Begin)) }
+      assert { mem n (at inp 'Begin) -> mem n (at outp 'Begin) };
+      assert { mem n (at outp 'Begin) -> exists i j. 0 <= i < j < cursor outp /\ outp[i] = outp[j] };
+    end;
+    assert { let ptr = at (cursor inp) 'Begin in ptr > 1 -> n >= inp[ptr-1] };
+    assert { let ptr = at (cursor inp) 'Begin in ptr > 1 -> inp[ptr-1] >= inp[ptr-2] };
+    assert { let ptr = at (cursor inp) 'Begin in ptr > 1 -> n >= inp[ptr-2] };
+    assert { let ptr = at (cursor inp) 'Begin in ptr > 1 -> n >= ptr };
+    assert { max_prime > n };
+  end;
+  abstract ensures { at (cursor inp) 'Begin < cursor inp }
+    abstract ensures { not (mem n (at inp 'Begin)) }
+      assert { mem n (at inp 'Begin) -> mem n (at outp 'Begin) };
+      assert { mem n (at outp 'Begin) -> exists i j. 0 <= i < j < cursor outp /\ outp[i] = outp[j] };
+    end;
+    assert { mem n inp };
+    assert { cursor inp <= at (cursor inp) 'Begin -> mem n (at inp 'Begin) };
+  end;
+*)
     done
   with Break ->
     ()
