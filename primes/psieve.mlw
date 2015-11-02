@@ -86,9 +86,10 @@ diverges
     while true do
         invariant { go_prefix_inv head src dst }
         let n = dequeue src in
+        assert { go_prefix_inv head src dst };
         enqueue n dst;
         assert { go_prefix_inv head src dst }
-    done;
+    done
 
 use import Mem
 
@@ -101,13 +102,17 @@ lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int.
   cursor dst > 0 -> go_prefix_inv x src dst ->
   forall y: int.  mem y dst <-> mem y src \/ x = y
 
-predicate go_sieve_req (src dst: queue int) =
+predicate go_sieve_req_1 (src dst: queue int) =
    forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
 
-predicate go_sieve_inv (src dst: queue int) =
+predicate go_sieve_req_2 (src dst: queue int) = true
+
+predicate go_sieve_inv_2 (src dst: queue int) =
    (forall x: int. mem x dst <-> mem x src /\ prime x)
   /\
    (forall i j: int. 0 <= i < j < cursor dst -> dst[i] <> dst[j])
+
+predicate go_sieve_inv_1 (src dst: queue int) = true
 
 (*
 channel ownership:
@@ -129,7 +134,8 @@ requires { fresh src }
 requires { fresh dst }
 diverges
   = let p = dequeue src in
-    assume { go_sieve_req src dst };
+    assert { "expl:go_sieve_inv" go_sieve_inv_1 src dst };
+    assume { go_sieve_req_1 src dst };
 assert { prime p };
     let filt = make(): queue int in
     let dst2 = make(): queue int in
@@ -139,10 +145,12 @@ assert { prime p };
     assume { go_prefix_inv p dst2 dst }; 
     
     (* go sieve filt dst2 *)		        (* 2 *)
-    assert { "expl:go_sieve_req" go_sieve_req filt dst2 };
+    assert { "expl:go_sieve_req" go_sieve_req_1 filt dst2 };
+    assert { "expl:go_sieve_req" go_sieve_req_2 filt dst2 };
     float dst2;
     float dst;
-    assume { go_sieve_inv filt dst2 };
+    assume { go_sieve_inv_1 filt dst2 };
+    assume { go_sieve_inv_2 filt dst2 };
     assume { go_prefix_inv p dst2 dst };
 
     while true do
@@ -150,18 +158,23 @@ invariant { src.pointer >= 0 }
 invariant { dst.pointer >= 0 }        
 invariant { dst2.pointer >= 0 }        
 invariant { filt.pointer >= 0 }        
-        invariant { go_sieve_req filt dst2 }
-        invariant { go_sieve_inv filt dst2 }
+        invariant { go_sieve_req_1 filt dst2 }
+        invariant { go_sieve_inv_1 filt dst2 }
+        invariant { go_sieve_req_2 filt dst2 }
+        invariant { go_sieve_inv_2 filt dst2 }
         invariant { go_prefix_inv p dst2 dst }  (* this should use 'at p ...' if p is mutable *)
-        invariant { go_sieve_req src dst }
-        invariant { go_sieve_inv src dst }
+        invariant { go_sieve_req_1 src dst }
+        invariant { go_sieve_inv_1 src dst }
+        invariant { go_sieve_req_2 src dst }
+        invariant { go_sieve_inv_2 src dst }
 
 invariant { forall x: int. mem x src /\ not (divides p x) -> mem x filt }
 invariant { forall x: int. mem x filt -> mem x src /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
 invariant { forall x: int. mem x filt -> p <> x }
 
         let n = dequeue src in
-        assume { go_sieve_req src dst };
+        assert { go_sieve_inv_1 src dst };
+        assume { go_sieve_req_1 src dst };
         if not (divides p n) then (
 assert { forall x: int. mem x src /\ not (divides p x) /\ x < n -> mem x filt };
 assert { forall x: int. mem x (enqueued n filt) -> p <> x };
@@ -169,10 +182,10 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
  abstract ensures { forall x: int. mem x filt -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
    ()
  end;
-            assert { "expl:go_sieve_req" go_sieve_req filt dst2 };	 (* 2 *)
             float dst2;                          (* 2 *)
             float dst;                           (* 1 *)
-            assume { go_sieve_inv filt dst2 };   (* 2 *)
+            assert { "expl:go_sieve_req" go_sieve_req_2 filt dst2 };	 (* 2 *)
+            assume { go_sieve_inv_2 filt dst2 };   (* 2 *)
             assume { go_prefix_inv p dst2 dst }; (* 1 *)
  abstract ensures { forall x: int. mem x dst <-> mem x src /\ prime x }
    (* these are not necessary, but speed up the prover *)
@@ -180,7 +193,8 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
    assert { forall x: int. mem x dst2 -> mem x src };
    ()
  end;
-            assert { "expl:go_sieve_inv" go_sieve_inv src dst };     (* ? *)
+            assert { "expl:go_sieve_inv" go_sieve_inv_2 src dst };     (* ? *)
+            assume { go_sieve_req_2 src dst };
         ) 
     done
 
@@ -227,16 +241,15 @@ let main unit =
     while true do
 invariant { inp.pointer >= 0 }
 invariant { outp.pointer >= 0 }
-        invariant { go_generator_inv inp }
-        invariant { go_sieve_inv inp outp }
-        invariant { go_sieve_req inp outp }
+        invariant { go_generator_inv inp }   (* not necessary, but speeds things up *)
+        invariant { go_sieve_inv_2 inp outp }
         variant { max_prime - cursor inp }   (* TODO: try different variants *)
 'Begin:
 	float inp;
         assume { go_generator_inv inp };
-        assert { go_sieve_req inp outp };
         let n = dequeue outp in 
-        assume { go_sieve_inv inp outp };
+        assert { go_sieve_req_2 inp outp };
+        assume { go_sieve_inv_2 inp outp };
         if n >= max_prime then 
             raise Break;
         check { prime n };
