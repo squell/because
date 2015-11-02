@@ -5,7 +5,7 @@ use import int.Int
 
 predicate mem (e: 'a) (q: queue 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
 
-lemma mem_0: forall x: 'a, q: queue 'a. 
+lemma mem_0: forall x: 'a, q: queue 'a.
   cursor q >= 0 -> mem x (enqueued x q)
 
 lemma mem_S: forall x y: 'a, q: queue 'a.
@@ -40,7 +40,7 @@ lemma occ_bounds:
   forall x: 'a, q: queue 'a. 0 <= cursor q -> 0 <= occ x q <= cursor q
 
 lemma occ_mem_correspondence:
-  forall x: 'a, q: queue 'a. mem x q <-> occ x q > 0 
+  forall x: 'a, q: queue 'a. mem x q <-> occ x q > 0
 
 end
 
@@ -82,20 +82,31 @@ predicate go_prefix_inv_2 (x: int) (src: queue int) (dst: queue int) =
  /\
  ( cursor dst = cursor src+1 )
 
+val go_prefix_1 (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_prefix_1" go_prefix_req_1 head src dst }
+ensures  { go_prefix_inv_1 head src dst }
+val go_prefix_1_mk (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_prefix_1" go_prefix_inv_1 head src dst }
+ensures  { go_prefix_req_1 head src dst }
+val go_prefix_2 (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_prefix_2" go_prefix_req_2 head src dst }
+ensures  { go_prefix_inv_2 head src dst }
+val go_prefix_2_mk (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_prefix_2" go_prefix_inv_2 head src dst }
+ensures  { go_prefix_req_2 head src dst }
+
 let prefix (head: int) (src: queue int) (dst: queue int): unit
 requires { fresh src }
 requires { fresh dst }
 diverges
  =  enqueue head dst;
-    assert { go_prefix_inv_2 head src dst };
+    go_prefix_2_mk head src dst;
     while true do
         invariant { go_prefix_inv_2 head src dst }
         let n = dequeue src in
-        assert { go_prefix_inv_1 head src dst };
-        assume { go_prefix_req_1 head src dst };
+	go_prefix_1_mk head src dst;
         enqueue n dst;
-        assert { go_prefix_inv_2 head src dst };
-        assume { go_prefix_req_2 head src dst };
+	go_prefix_2_mk head src dst;
     done
 
 use import Mem
@@ -105,7 +116,7 @@ requires { go_prefix_inv_2 x src dst }
 ensures { forall i: int. 0 <= i < cursor src -> exists j: int [i+1]. 0 <= j < cursor dst /\ dst[j] = src[i] }
  = assert { forall i: int. 0 <= i < cursor src -> src[i] = dst[i+1] }
 
-lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int. 
+lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int.
   cursor dst > 0 -> go_prefix_inv_2 x src dst ->
   forall y: int.  mem y dst <-> mem y src \/ x = y
 
@@ -121,6 +132,19 @@ predicate go_sieve_inv_2 (src dst: queue int) =
   /\
    (forall i j: int. 0 <= i < j < cursor dst -> dst[i] <> dst[j])
 
+val go_sieve_1 (src: queue int) (dst: queue int): unit
+requires { "expl:go_sieve_1" go_sieve_req_1 src dst }
+ensures  { go_sieve_inv_1 src dst }
+val go_sieve_1_mk (src: queue int) (dst: queue int): unit
+requires { "expl:go_sieve_1" go_sieve_inv_1 src dst }
+ensures  { go_sieve_req_1 src dst }
+val go_sieve_2 (src: queue int) (dst: queue int): unit
+requires { "expl:go_sieve_2" go_sieve_req_2 src dst }
+ensures  { go_sieve_inv_2 src dst }
+val go_sieve_2_mk (src: queue int) (dst: queue int): unit
+requires { "expl:go_sieve_2" go_sieve_inv_2 src dst }
+ensures  { go_sieve_req_2 src dst }
+
 (*
 channel ownership:
 	reader		writer
@@ -132,7 +156,7 @@ filt:	child: sieve	me
  => inviolable channels: dst and dst2
 *)
 
-(* it is interesting to see how this affects CVC4 
+(* it is interesting to see how this affects CVC4
 clone OrderedQueue with type t = int, predicate rel = (<)
 *)
 
@@ -142,8 +166,7 @@ requires { fresh src }
 requires { fresh dst }
 diverges
   = let p = dequeue src in
-    assert { "expl:go_sieve_inv" go_sieve_inv_1 src dst };
-    assume { go_sieve_req_1 src dst };
+    go_sieve_1_mk src dst;
 assert { prime p };
     let filt = make(): queue int in
     let dst2 = make(): queue int in
@@ -152,8 +175,8 @@ assert { prime p };
     float dst;
     assume { go_prefix_inv_1 p dst2 dst };
     assume { go_prefix_inv_2 p dst2 dst };
-    
-    (* go sieve filt dst2 *)		        (* 2 *)
+
+    (* go sieve filt dst2 *)			(* 2 *)
     assert { "expl:go_sieve_req" go_sieve_req_1 filt dst2 };
     assert { "expl:go_sieve_req" go_sieve_req_2 filt dst2 };
     float dst2;
@@ -164,10 +187,10 @@ assert { prime p };
     assume { go_prefix_inv_2 p dst2 dst };
 
     while true do
-invariant { src.pointer >= 0 }        
-invariant { dst.pointer >= 0 }        
-invariant { dst2.pointer >= 0 }        
-invariant { filt.pointer >= 0 }        
+invariant { src.pointer >= 0 }
+invariant { dst.pointer >= 0 }
+invariant { dst2.pointer >= 0 }
+invariant { filt.pointer >= 0 }
 (*
         invariant { go_prefix_inv_1 p dst2 dst }  (* vacuous *)
         invariant { go_prefix_inv_2 p dst2 dst }  (* this should use 'at p ...' if p is mutable *)
@@ -178,15 +201,14 @@ invariant { filt.pointer >= 0 }
         invariant { go_sieve_req_1 src dst }
         invariant { go_sieve_inv_1 src dst } (* vacuous *)
         invariant { go_sieve_req_2 src dst } (* vacuous *)
-        invariant { go_sieve_inv_2 src dst } 
+        invariant { go_sieve_inv_2 src dst }
 *)
 invariant { forall x: int. mem x src /\ not (divides p x) -> mem x filt }
 invariant { forall x: int. mem x filt -> mem x src /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
 invariant { forall x: int. mem x filt -> p <> x }
 
         let n = dequeue src in
-        assert { go_sieve_inv_1 src dst };
-        assume { go_sieve_req_1 src dst };
+        go_sieve_1_mk src dst;
         if not (divides p n) then (
 assert { forall x: int. mem x src /\ not (divides p x) /\ x < n -> mem x filt };
 assert { forall x: int. mem x (enqueued n filt) -> p <> x };
@@ -196,28 +218,30 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
  end;
             float dst2;                                                  (* 2 *)
             float dst;                                                   (* 1 *)
-            assert { "expl:go_sieve_req" go_sieve_req_1 filt dst2 };	 (* 2 *)
-            assume { go_sieve_inv_1 filt dst2 };	                 (* 2 *)
-            assert { go_sieve_req_2 filt dst2 };                         (* 2 *)
-            assume { go_sieve_inv_2 filt dst2 };                         (* 2 *)
-            assert { go_prefix_req_1 p dst2 dst };                       (* 1 *)
-            assume { go_prefix_inv_1 p dst2 dst };                       (* 1 *)
-            assert { go_prefix_req_2 p dst2 dst };                       (* 1 *)
-            assume { go_prefix_inv_2 p dst2 dst };                       (* 1 *)
+            go_sieve_1 filt dst2;                                        (* 2 *)
+            go_sieve_2 filt dst2;                                        (* 2 *)
+	    go_prefix_1 p dst2 dst;                                      (* 1 *)
+	    go_prefix_2 p dst2 dst;                                      (* 1 *)
  abstract ensures { forall x: int. mem x dst <-> mem x src /\ prime x }
    (* these are not necessary, but speed up the prover *)
    assert { forall x: int. mem x dst2 -> mem x filt };
    assert { forall x: int. mem x dst2 -> mem x src };
    ()
  end;
-            assert { "expl:go_sieve_inv" go_sieve_inv_2 src dst };     (* ? *)
-            assume { go_sieve_req_2 src dst };
-        ) 
+            go_sieve_2_mk src dst;                                       (* ? *)
+        );
     done
 
 predicate go_generator_req (out: queue int) = true
 predicate go_generator_inv (out: queue int) =
   forall i: int. 0 <= i < cursor out -> out[i] = 2+i
+
+val go_generator (out: queue int): unit
+requires { "expl:go_generator" go_generator_req out }
+ensures { go_generator_inv out }
+val go_generator_mk (out: queue int): unit
+requires { "expl:go_generator" go_generator_inv out }
+ensures { go_generator_req out }
 
 use import ref.Refint
 
@@ -225,12 +249,11 @@ let generator (out: queue int) =
 requires { fresh out }
 diverges
     let x = ref 2 in
-    while true do 
+    while true do
         invariant { go_generator_inv out }
         invariant { !x = 2 + cursor out }
         enqueue !x out;
-        assert { go_generator_inv out };
-        assume { go_generator_req out };
+        go_generator_mk out;
         x += 1
     done
 
@@ -265,11 +288,10 @@ invariant { outp.pointer >= 0 }
         variant { max_prime - cursor inp }   (* TODO: try different variants *)
 'Begin:
 	float inp;
-        assume { go_generator_inv inp };
-        let n = dequeue outp in 
-        assert { go_sieve_req_2 inp outp };
-        assume { go_sieve_inv_2 inp outp };
-        if n >= max_prime then 
+	go_generator inp;
+        let n = dequeue outp in
+        go_sieve_2 inp outp;
+        if n >= max_prime then
             raise Break;
         check { prime n };
         (* this assert speeds up the next assert -- not necessary *)
