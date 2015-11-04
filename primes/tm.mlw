@@ -46,10 +46,13 @@ ensures { go_decide_inv m q }
 predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
   = entangled ?o (p handled) /\ (p ready)
 
+predicate ([<-]) (o: obligation) (q: queue 'a) (p: bool)
+  = o <: \ready.p -> ready q
+
 let decide (m: machine) (signal: queue unit): unit
 diverges
  = let ghost promise = any obligation in
-   assume { promise <: \ready.halting m -> ready signal };
+   assume { promise[signal <- halting m] };
    assert { go_decide_init m signal };
    let i = ref 0 in
    while not (halted m !i) do
@@ -116,11 +119,15 @@ ensures { result <-> halting m }
 predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
   = entangled ?o (p handled) /\ (p ready)
 
+predicate ([<-]) (o: obligation) (q: queue 'a) (cond: bool)
+  = entangled ?o (cond -> handled q) /\ (cond -> ready q)
+(* = o <: \ready.cond -> ready q *)
+
 let decide (signal: queue machine): unit
 requires { fresh signal }
 diverges
  = let ghost promise = any obligation in
-   assume { promise <: \ready.ready signal };
+   assume { promise[signal <- true] };
    assert { go_decide_init signal };
    let continue = ref true in
    while !continue do
@@ -132,12 +139,12 @@ invariant { signal.pointer >= 0 }
 'Begin:
      let m = dequeue signal in
      let ghost smallpromise = any obligation in
-     assume { smallpromise <: \ready.halting signal[cursor signal-1] -> ready signal };
+     assume { smallpromise[signal <- halting signal[cursor signal-1]] };
      go_decide_mk signal;
      continue := run m;
      if !continue then (
 	     reissue promise;
-	     assume { promise <: \ready.ready signal };
+	     assume { promise[signal <- true] };
      );
      promise => smallpromise;
      check { 
