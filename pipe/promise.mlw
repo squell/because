@@ -31,4 +31,9 @@ val delegate (dst src: obligation): unit
 requires { satisfied dst -> satisfied src }
 ensures { satisfied src }
 
+let (=>) (dst src: obligation): unit
+requires { satisfied dst -> satisfied src }
+ensures { satisfied src }
+ = delegate dst src
+
 end

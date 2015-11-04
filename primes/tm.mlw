@@ -27,6 +27,7 @@ use import AbstractTuringMachine
 use import ref.Ref
 use import int.Int
 use import promise.Promise
+use HighOrd as HO
 
 predicate go_decide_init (m: machine) (q: queue unit)
  = halting m -> ready q
@@ -42,10 +43,13 @@ val go_decide (m: machine) (q: queue unit): unit
 requires { go_decide_req m q }
 ensures { go_decide_inv m q }
 
+predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
+  = entangled ?o (p handled) /\ (p ready)
+
 let decide (m: machine) (signal: queue unit): unit
 diverges
- = let ghost promise = any obligation ensures { entangled ?result (halting m -> handled signal) } in
-   assume { halting m -> ready signal };
+ = let ghost promise = any obligation in
+   assume { promise <: \ready.halting m -> ready signal };
    assert { go_decide_init m signal };
    let i = ref 0 in
    while not (halted m !i) do
@@ -109,11 +113,14 @@ ensures { result <-> halting m }
    done;
    true
 
+predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
+  = entangled ?o (p handled) /\ (p ready)
+
 let decide (signal: queue machine): unit
 requires { fresh signal }
 diverges
- = let ghost promise = any obligation ensures { entangled ?result (handled signal) } in
-   assume { ready signal };
+ = let ghost promise = any obligation in
+   assume { promise <: \ready.ready signal };
    assert { go_decide_init signal };
    let continue = ref true in
    while !continue do
@@ -124,16 +131,15 @@ invariant { signal.pointer >= 0 }
      (* variant { 0 } unless { ?promise } *)
 'Begin:
      let m = dequeue signal in
-     let ghost smallpromise = any obligation ensures { entangled ?result (halting signal[cursor signal-1] -> handled signal) } in
-     assume { halting signal[cursor signal-1] -> ready signal };
+     let ghost smallpromise = any obligation in
+     assume { smallpromise <: \ready.halting signal[cursor signal-1] -> ready signal };
      go_decide_mk signal;
      continue := run m;
      if !continue then (
 	     reissue promise;
-	     assume { entangled ?promise (handled signal) };
-	     assume { ready signal };
+	     assume { promise <: \ready.ready signal };
      );
-     delegate promise smallpromise; 
+     promise => smallpromise;
      check { 
 	"expl:conditional decrease"
 		not (at ?promise 'Begin)
