@@ -1,8 +1,11 @@
 module Promise
 
-type obligation model { ghost mutable cookie: bool }
+type veilbool
+function truthval veilbool: bool 
 
-predicate satisfied (o: obligation) = o.cookie
+type obligation model { ghost mutable cookie: veilbool }
+
+predicate satisfied (o: obligation) = truthval o.cookie
 
 predicate entangled (a b: bool)
   = a <-> b

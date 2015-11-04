@@ -43,11 +43,10 @@ val go_decide (m: machine) (q: queue unit): unit
 requires { go_decide_req m q }
 ensures { go_decide_inv m q }
 
-predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
-  = entangled ?o (p handled) /\ (p ready)
-
 predicate ([<-]) (o: obligation) (q: queue 'a) (p: bool)
-  = o <: \ready.p -> ready q
+  = entangled ?o (p -> handled q)
+
+axiom ready_def: forall x: queue unit. ready x = (exists o: obligation. ?o -> handled x)
 
 let decide (m: machine) (signal: queue unit): unit
 diverges
@@ -116,12 +115,10 @@ ensures { result <-> halting m }
    done;
    true
 
-predicate (<:) (o: obligation) (p: (queue 'a->bool)->bool)
-  = entangled ?o (p handled) /\ (p ready)
-
 predicate ([<-]) (o: obligation) (q: queue 'a) (cond: bool)
-  = entangled ?o (cond -> handled q) /\ (cond -> ready q)
-(* = o <: \ready.cond -> ready q *)
+  = entangled ?o (cond -> handled q)
+
+axiom ready_def: forall x: queue machine. ready x = (exists o: obligation. ?o -> handled x)
 
 let decide (signal: queue machine): unit
 requires { fresh signal }
