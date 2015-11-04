@@ -1,17 +1,3 @@
-module TickCounter
-
-use import int.Int
-use import ref.Ref
-
-val ghost ticks: ref int
-
-let ghost tick (): unit
-writes { ticks }
-ensures { !ticks = old (!ticks) + 1 }
- = ticks := !ticks + 1
-
-end
-
 module Promise
 
 type obligation model { ghost mutable cookie: bool }
@@ -35,5 +21,46 @@ let (=>) (dst src: obligation): unit
 requires { satisfied dst -> satisfied src }
 ensures { satisfied src }
  = delegate dst src
+
+end
+
+
+module Test
+
+use import ref.Ref
+use import int.Int
+use import Promise
+use import number.Prime
+use import infprime.NextPrime
+use import set.SetComprehension
+use HighOrd as HO
+
+function main_variant (i: int): int
+ = next_prime i - i
+
+let prime_loop ()
+diverges
+ = let ghost reachme = any obligation in
+   let count = ref 0 in
+   let i = ref 2 in
+   while true do 
+     invariant { 2 <= !i }
+'Begin:
+     if prime !i then (
+        count := !count + 1;
+        assume { ?reachme };
+        reissue reachme;
+     );
+     i := !i + 1;
+     check {
+	"expl:conditional decrease"
+		not (at ?reachme 'Begin)
+	->
+		0 <= at (main_variant !i) 'Begin 
+			/\
+		(main_variant !i) < at (main_variant !i) 'Begin 
+     };
+   done;
+   check { ?reachme }
 
 end

@@ -23,3 +23,33 @@ goal Euclid:
    forall n: int. exists p: int. p > n /\ prime p
 
 end
+
+
+theory NextPrime
+
+use import InfinitePrimes
+use import int.Int
+use set.SetComprehension as ZF
+use import set.FsetComprehension
+use import set.Fsetint
+use import number.Prime
+
+function some_larger_prime (n: int): int
+  = ZF.choose (ZF.comprehension (\p: int. p > n /\ prime p))
+
+lemma some_larger_prime_def:
+  forall n: int. some_larger_prime n > n /\ prime (some_larger_prime n)
+
+function next_prime (n: int): int
+  = min_elt (filter prime (interval n (some_larger_prime n+1)))
+
+lemma next_prime_interval_contains_primes:
+  forall n: int. not is_empty (filter prime (interval n (some_larger_prime n+1)))
+
+lemma next_prime_interval_is_bounded_below:
+  forall n p: int. mem p (filter prime (interval n (some_larger_prime n+1))) -> next_prime n <= p
+
+lemma next_prime_def:
+  forall n: int. next_prime n >= n /\ prime (next_prime n) /\ forall p: int. prime p /\ n <= p -> next_prime n <= p
+
+end
