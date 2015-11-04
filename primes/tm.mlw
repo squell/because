@@ -1,0 +1,159 @@
+(*
+    Exploring 'conditional termination' using a 'one shot promise' and a 'many time promise'
+ *)
+
+module AbstractTuringMachine
+
+use import int.Int
+use import set.SetComprehension
+
+type machine
+
+predicate halted (m: machine) (step: int)
+
+predicate halting (m: machine) = exists i: int. 0 <= i /\ halted m i
+
+function steps (m: machine): int
+ = choose (comprehension (\i. 0 <= i /\ halted m i))
+
+lemma steps_def: forall m. halting m -> 0 <= steps m /\ halted m (steps m)
+
+end
+
+module StaticHaltingProblem
+
+use import pipe.PrototypeQueue
+use import AbstractTuringMachine
+use import ref.Ref
+use import int.Int
+
+predicate go_decide_init (m: machine) (q: queue unit)
+ = halting m -> ready q
+predicate go_decide_req (m: machine) (q: queue unit)
+ = true
+predicate go_decide_inv (m: machine) (q: queue unit)
+ = true
+
+val go_decide_mk (m: machine) (q: queue unit): unit
+requires { go_decide_inv m q }
+ensures { go_decide_req m q }
+val go_decide (m: machine) (q: queue unit): unit
+requires { go_decide_req m q }
+ensures { go_decide_inv m q }
+
+let decide (m: machine) (signal: queue unit): unit
+diverges
+ = assume { halting m -> ready signal };
+'Promise:
+   assert { go_decide_init m signal };
+   let i = ref 0 in
+   while not (halted m !i) do
+     invariant { 0 <= !i }
+     invariant { halting m -> !i <= steps m }
+     (* variant { steps m - !i } unless { at (halting m -> handled signal) 'Promise } *)
+'Begin:
+     i := !i + 1;
+     check { 
+	"expl:conditional decrease"
+		not (at (halting m -> handled signal) 'Promise)
+	->
+		0 <= at (steps m - !i) 'Begin 
+			/\
+		(steps m - !i) < at (steps m - !i) 'Begin 
+     };
+   done;
+   enqueue () signal;
+   go_decide_mk m signal;
+   check { at (halting m -> handled signal) 'Promise }
+
+let test (m: machine)
+requires { halting m }
+ = let ch = make(): queue unit in
+   (* go decide m ch *)
+   assume { go_decide_init m ch };
+   dequeue ch;
+   go_decide m ch
+
+end
+
+module DynamicHaltingProblem
+
+use import pipe.PrototypeQueue
+use import AbstractTuringMachine
+use import ref.Ref
+use import int.Int
+
+predicate go_decide_init (q: queue machine)
+ = ready q
+predicate go_decide_req (q: queue machine)
+ = true
+predicate go_decide_inv (q: queue machine)
+ = true
+
+val go_decide_mk (q: queue machine): unit
+requires { go_decide_inv q }
+ensures { go_decide_req q }
+val go_decide (q: queue machine): unit
+requires { go_decide_req q }
+ensures { go_decide_inv q }
+
+let run (m: machine): bool
+diverges
+ensures { result <-> halting m }
+ = let i = ref 0 in
+   while not (halted m !i) do
+     invariant { 0 <= !i }
+     i := !i + 1
+   done;
+   true
+
+let decide (signal: queue machine): unit
+requires { fresh signal }
+diverges
+ = assume { ready signal };
+'Promise:
+   assert { go_decide_init signal };
+   let continue = ref true in
+   while !continue do
+invariant { signal.pointer >= 0 }
+     invariant { cursor signal > 0 \/ not !continue -> handled (at signal 'Promise) }
+     invariant { ready signal }
+     (* variant { 0 } unless { at (handled signal) 'Promise } *) (* superfluous *)
+     (* variant { 0 } unless { at (handled signal) 'NewPromise } *)
+'Begin:
+     let m = dequeue signal in
+     go_decide_mk signal;
+     assume { ready signal };
+'NewPromise:
+     continue := run m;
+     check { 
+	"expl:conditional decrease"
+		not (at (handled signal) 'Promise)
+	->
+		0 <= at (0) 'Begin 
+			/\
+		(0) < at (0) 'Begin 
+     };
+     check { 
+	"expl:conditional decrease"
+		not (at (handled signal) 'NewPromise)
+	->
+		0 <= at (0) 'Begin 
+			/\
+		(0) < at (0) 'Begin 
+     };
+   done;
+   check { at (handled signal) 'Promise };
+   check { at (handled signal) 'NewPromise }
+
+let test (m: machine)
+ = let ch = make(): queue machine in
+   (* go decide m ch *)
+   assume { go_decide_init ch };
+   let m = any machine ensures { halting result } in
+   enqueue m ch;
+   go_decide ch;
+   enqueue m ch;
+   go_decide ch
+
+end
