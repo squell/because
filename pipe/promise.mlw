@@ -14,51 +14,21 @@ end
 
 module Promise
 
-type obligation model { mutable cookie: bool }
+type obligation model { ghost mutable cookie: bool }
 
 predicate satisfied (o: obligation) = o.cookie
 
-val satisfy (o: obligation): unit
-ensures { satisfied o }
+predicate entangled (a b: bool)
+  = a <-> b
+function (?) (o: obligation): bool 
+  = satisfied o
 
 val reissue (o: obligation): unit
 requires { satisfied o }
 writes { o }
 
-let touch (o: obligation): unit
-writes { o }
-ensures { satisfied (old o) }
- = satisfy o; reissue o
-
-end
-
-module Test
-
-use import Promise
-use import int.Int
-use import ref.Ref
-use HighOrd as HO
-
-predicate mooi int
-axiom mooi_partialdef: forall i. exists j. i <= j < i+7 /\ mooi j
-lemma mooi_1_to_7: exists i. 1 <= i < 8 /\ mooi i
-
-let test_reach () =
-    let reachme = any obligation in
-'L:
-    let y = ref 1 in
-    for x = 1 to 10000000 do
-        invariant { (exists y. 1 <= y < x /\ mooi y) -> satisfied (at reachme 'L) }
-        invariant { reachme = (at reachme 'L) \/ satisfied (at reachme 'L) }
-        invariant { !y <= x }
-        (* pseudovariant { 100 - !y } { satisfied (at reachme 'L) } *)
-'B:
-        if mooi x then (
-            satisfy reachme
-        );
-        y := !y + 1;
-        assert { "expl:conditional decrease" not (at (satisfied (at reachme 'L)) 'B) -> 0 <= (100- !y) < (at (100- !y) 'B) };
-    done;
-    check { satisfied (at reachme 'L) }
+val delegate (dst src: obligation): unit
+requires { satisfied dst -> satisfied src }
+ensures { satisfied src }
 
 end

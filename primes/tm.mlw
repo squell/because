@@ -26,6 +26,7 @@ use import pipe.PrototypeQueue
 use import AbstractTuringMachine
 use import ref.Ref
 use import int.Int
+use import promise.Promise
 
 predicate go_decide_init (m: machine) (q: queue unit)
  = halting m -> ready q
@@ -43,19 +44,19 @@ ensures { go_decide_inv m q }
 
 let decide (m: machine) (signal: queue unit): unit
 diverges
- = assume { halting m -> ready signal };
-'Promise:
+ = let ghost promise = any obligation ensures { entangled ?result (halting m -> handled signal) } in
+   assume { halting m -> ready signal };
    assert { go_decide_init m signal };
    let i = ref 0 in
    while not (halted m !i) do
      invariant { 0 <= !i }
      invariant { halting m -> !i <= steps m }
-     (* variant { steps m - !i } unless { at (halting m -> handled signal) 'Promise } *)
+     (* variant { steps m - !i } unless { ?promise } *)
 'Begin:
      i := !i + 1;
      check { 
 	"expl:conditional decrease"
-		not (at (halting m -> handled signal) 'Promise)
+		not (at ?promise 'Begin)
 	->
 		0 <= at (steps m - !i) 'Begin 
 			/\
@@ -64,7 +65,7 @@ diverges
    done;
    enqueue () signal;
    go_decide_mk m signal;
-   check { at (halting m -> handled signal) 'Promise }
+   check { ?promise }
 
 let test (m: machine)
 requires { halting m }
@@ -82,13 +83,14 @@ use import pipe.PrototypeQueue
 use import AbstractTuringMachine
 use import ref.Ref
 use import int.Int
+use import promise.Promise
 
 predicate go_decide_init (q: queue machine)
  = ready q
 predicate go_decide_req (q: queue machine)
  = true
 predicate go_decide_inv (q: queue machine)
- = true
+ = halting q[cursor q-1] -> ready q        (* won't verify "ready q", which is good! *)
 
 val go_decide_mk (q: queue machine): unit
 requires { go_decide_inv q }
@@ -110,41 +112,39 @@ ensures { result <-> halting m }
 let decide (signal: queue machine): unit
 requires { fresh signal }
 diverges
- = assume { ready signal };
-'Promise:
+ = let ghost promise = any obligation ensures { entangled ?result (handled signal) } in
+   assume { ready signal };
    assert { go_decide_init signal };
    let continue = ref true in
    while !continue do
 invariant { signal.pointer >= 0 }
-     invariant { cursor signal > 0 \/ not !continue -> handled (at signal 'Promise) }
-     invariant { ready signal }
-     (* variant { 0 } unless { at (handled signal) 'Promise } *) (* superfluous *)
-     (* variant { 0 } unless { at (handled signal) 'NewPromise } *)
+     invariant { !continue -> ready signal }
+     invariant { !continue -> ?promise = handled signal }
+     invariant { not !continue -> ?promise }
+     (* variant { 0 } unless { ?promise } *)
 'Begin:
      let m = dequeue signal in
+     let ghost smallpromise = any obligation ensures { entangled ?result (halting signal[cursor signal-1] -> handled signal) } in
+     assume { halting signal[cursor signal-1] -> ready signal };
      go_decide_mk signal;
-     assume { ready signal };
-'NewPromise:
      continue := run m;
+     if !continue then (
+	     reissue promise;
+	     assume { entangled ?promise (handled signal) };
+	     assume { ready signal };
+     );
+     delegate promise smallpromise; 
      check { 
 	"expl:conditional decrease"
-		not (at (handled signal) 'Promise)
+		not (at ?promise 'Begin)
 	->
 		0 <= at (0) 'Begin 
 			/\
 		(0) < at (0) 'Begin 
      };
-     check { 
-	"expl:conditional decrease"
-		not (at (handled signal) 'NewPromise)
-	->
-		0 <= at (0) 'Begin 
-			/\
-		(0) < at (0) 'Begin 
-     };
+     check { ?smallpromise }
    done;
-   check { at (handled signal) 'Promise };
-   check { at (handled signal) 'NewPromise }
+   check { ?promise }
 
 let test (m: machine)
  = let ch = make(): queue machine in
@@ -153,6 +153,7 @@ let test (m: machine)
    let m = any machine ensures { halting result } in
    enqueue m ch;
    go_decide ch;
+   let m = any machine in
    enqueue m ch;
    go_decide ch
 
