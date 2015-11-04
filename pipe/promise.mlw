@@ -14,47 +14,27 @@ end
 
 module Promise
 
-use import int.Int
+type obligation model { mutable cookie: bool }
 
-type obligation
-
-function timeout obligation: int
-
-predicate satisfied obligation
-
-val promise (t: int): obligation
-requires { t >= 0 }
-ensures { timeout result >= t }
+predicate satisfied (o: obligation) = o.cookie
 
 val satisfy (o: obligation): unit
 ensures { satisfied o }
 
-end
+val reissue (o: obligation): unit
+requires { satisfied o }
+writes { o }
 
-module PromiseMore
-
-use import int.Int
-use import Promise as P
-
-type obligation model { mutable obl: P.obligation }
-
-function timeout (x: obligation): int = P.timeout x.obl
-predicate satisfied (x: obligation) = P.satisfied x.obl
-
-val promise (t: int): obligation
-requires { t >= 0 }
-ensures { timeout result >= t }
-
-val satisfy (o: obligation): unit
-writes { o.obl }
+let touch (o: obligation): unit
+writes { o }
 ensures { satisfied (old o) }
-ensures { timeout o >= timeout (old o) }
+ = satisfy o; reissue o
 
 end
 
 module Test
 
-use import PromiseMore
+use import Promise
 use import int.Int
 use import ref.Ref
 use HighOrd as HO

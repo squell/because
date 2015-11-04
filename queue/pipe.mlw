@@ -41,6 +41,7 @@ function cursor (q: queue ~'a): int = q.pointer
 
 predicate ready (q: queue ~'a)
 predicate closed (q: queue ~'a)
+predicate handled (q: queue ~'a)
 
 axiom queue_exclusion: forall q: queue 'a. not (ready q /\ closed q)
 
@@ -50,11 +51,13 @@ val enqueue (x: ~'a) (q: queue ~'a): unit
 writes { q.pointer }
 requires { divergence \/ ready q }
 ensures { q = enqueued x (old q) }
+ensures { handled (old q) }
 
 let dequeue (q: queue ~'a): 'a
 writes { q.pointer }
 requires { divergence \/ ready q }
 ensures { q = enqueued result (old q) }
+ensures { handled (old q) }
  = let x = any 'a in enqueue x q; x
 
 val productive (q: queue ~'a): bool
