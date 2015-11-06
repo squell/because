@@ -327,3 +327,134 @@ invariant { outp.pointer >= 0 }
 
 end
 
+
+module ProofTest
+
+(* what happens if we use two different versions of 'prefix' to
+   compute fibonacci numbers, without explicit synchronization? *)
+
+use import PrimeNumberSieve
+use import pipe.PrototypeQueue
+use import int.Int
+use import int.Fibonacci
+use import ref.Ref
+use import Mem
+
+axiom fiat: divergence
+
+(* this function is correct *)
+let prefix_test_1 ()
+ = let src = make(): queue int in
+   let dst = make(): queue int in
+   let limit = any int ensures { result >= 0 } in
+   let y = ref 0 in
+   let n = 1 in
+   (* go prefix n src dst *)
+   assert { fresh src };
+   assert { fresh dst };
+
+   for i = 1 to limit do
+invariant { src.pointer >= 0 }
+invariant { dst.pointer >= 0 }
+      invariant { forall j: int. 0 <= j < cursor src -> src[j] = fib j }
+      invariant { !y = fib (i-1) }
+      invariant { cursor src = i-1 }
+      let z = !y in
+      y := !y + dequeue dst;
+      go_prefix_2 n src dst;
+      enqueue z src;
+      go_prefix_1 n src dst;
+   done;
+   check { "expl:result" !y = fib limit }
+
+(* incorrect, and doesn't verify in 'unsafe mode' *)
+let prefix_test_2 ()
+ = let src = make(): queue int in
+   let dst = make(): queue int in
+   let limit = any int ensures { result >= 0 } in
+   let y = ref 0 in
+   let n = 1 in
+   (* go prefix n src dst *)
+   assert { fresh src };
+   assert { fresh dst };
+
+   for i = 1 to limit do
+invariant { src.pointer >= 0 }
+invariant { dst.pointer >= 0 }
+      invariant { forall j: int. 0 <= j < cursor src -> src[j] = fib j }
+      invariant { !y = fib (i-1) }
+      invariant { cursor src = i-1 }
+      enqueue !y src;
+      go_prefix_1 n src dst;
+      y := !y + dequeue dst;
+      go_prefix_2 n src dst;
+   done;
+   check { "expl:result" !y = fib limit }
+
+predicate go_profix_req_1 (x: int) (src: queue int) (dst: queue int) = true
+predicate go_profix_req_2 (x: int) (src: queue int) (dst: queue int) = true
+predicate go_profix_inv_1 (x: int) (src: queue int) (dst: queue int) = true
+
+predicate go_profix_inv_2 (x: int) (src: queue int) (dst: queue int) =
+ ( dst[0] = x /\ forall i: int. 1 <= i < cursor dst -> dst[i] = src[i-1] )
+ /\
+ ( cursor dst = cursor src )
+
+val go_profix_1 (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_profix_1" go_profix_req_1 head src dst }
+ensures  { go_profix_inv_1 head src dst }
+val go_profix_1_mk (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_profix_1" go_profix_inv_1 head src dst }
+ensures  { go_profix_req_1 head src dst }
+val go_profix_2 (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_profix_2" go_profix_req_2 head src dst }
+ensures  { go_profix_inv_2 head src dst }
+val go_profix_2_mk (head: int) (src: queue int) (dst: queue int): unit
+requires { "expl:go_profix_2" go_profix_inv_2 head src dst }
+ensures  { go_profix_req_2 head src dst }
+
+let profix (head: int) (src: queue int) (dst: queue int): unit
+requires { fresh src }
+requires { fresh dst }
+diverges
+ =  let m = ref head in
+    while true do
+invariant { src.pointer >= 0 }
+invariant { dst.pointer >= 0 }
+        invariant { cursor src > 0 -> !m = src[cursor src-1] }
+        invariant { cursor src = 0 -> !m = head }
+        invariant { cursor src = cursor dst }
+        invariant { forall i: int. 0 <= i < cursor dst -> dst[0] = head /\ (i > 0 -> dst[i] = src[i-1]) }
+        let n = dequeue src in
+	go_profix_1_mk head src dst;
+        assert { cursor dst = 0 -> !m = head };
+        enqueue !m dst;
+	go_profix_2_mk head src dst;
+        m := n
+    done
+
+(* correct *)
+let prefix_test_3 ()
+ = let src = make(): queue int in
+   let dst = make(): queue int in
+   let limit = any int ensures { result >= 0 } in
+   let y = ref 0 in
+   let n = 1 in
+   (* go profix n src dst *)
+   assert { fresh src };
+   assert { fresh dst };
+
+   for i = 1 to limit do
+invariant { src.pointer >= 0 }
+invariant { dst.pointer >= 0 }
+      invariant { forall j: int. 0 <= j < cursor src -> src[j] = fib j }
+      invariant { !y = fib (i-1) }
+      invariant { cursor src = i-1 }
+      enqueue !y src;
+      go_profix_1 n src dst;
+      y := !y + dequeue dst;
+      go_profix_2 n src dst;
+   done;
+   check { "expl:result" !y = fib limit }
+
+end
