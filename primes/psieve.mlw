@@ -73,6 +73,8 @@ use import pipe.PrototypeQueue as Q
 axiom fiat: divergence
 
 (* vacuous, but for completeness *)
+predicate go_prefix_init (x: int) (src: queue int) (dst: queue int) = true
+
 predicate go_prefix_req_1 (x: int) (src: queue int) (dst: queue int) = true
 predicate go_prefix_req_2 (x: int) (src: queue int) (dst: queue int) = true
 predicate go_prefix_inv_1 (x: int) (src: queue int) (dst: queue int) = true
@@ -120,6 +122,8 @@ lemma go_prefix_inv_eq: forall x: int. forall src dst: queue int.
   cursor dst > 0 -> go_prefix_inv_2 x src dst ->
   forall y: int.  mem y dst <-> mem y src \/ x = y
 
+predicate go_sieve_init (src dst: queue int) = true
+
 predicate go_sieve_req_1 (src dst: queue int) =
    forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src
 
@@ -160,7 +164,6 @@ filt:	child: sieve	me
 clone OrderedQueue with type t = int, predicate rel = (<)
 *)
 
-(* TODO: examine pre-requires *)
 let sieve (src: queue int) (dst: queue int): unit
 requires { fresh src }
 requires { fresh dst }
@@ -171,20 +174,12 @@ assert { prime p };
     let filt = make(): queue int in
     let dst2 = make(): queue int in
     (* go prefix p dst2 dst *)			(* 1 *)
-    float dst2;
-    float dst;
-    assume { go_prefix_inv_1 p dst2 dst };
-    assume { go_prefix_inv_2 p dst2 dst };
+    assume { go_prefix_init p dst2 dst };
 
     (* go sieve filt dst2 *)			(* 2 *)
     assert { "expl:go_sieve_req" go_sieve_req_1 filt dst2 };
     assert { "expl:go_sieve_req" go_sieve_req_2 filt dst2 };
-    float dst2;
-    float dst;
-    assume { go_sieve_inv_1 filt dst2 };
-    assume { go_sieve_inv_2 filt dst2 };
-    assume { go_prefix_inv_1 p dst2 dst };
-    assume { go_prefix_inv_2 p dst2 dst };
+    assume { go_sieve_init filt dst2 };
 
     while true do
 invariant { src.pointer >= 0 }
@@ -231,6 +226,8 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
             go_sieve_2_mk src dst;                                       (* ? *)
         );
     done
+
+predicate go_generator_init (out: queue int) = true
 
 predicate go_generator_req (out: queue int) = true
 predicate go_generator_inv (out: queue int) =
@@ -279,6 +276,8 @@ let main unit =
     let outp = make(): queue int in
     let inp  = make(): queue int in
     (* go func() { ... } *)
+    assume { go_generator_init inp };
+    assume { go_sieve_init inp outp };
   try
     while true do
 invariant { inp.pointer >= 0 }
