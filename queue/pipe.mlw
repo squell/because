@@ -22,6 +22,10 @@ writes { q.pointer }
 ensures { q.pointer >= 0 }
 (* ensures { q.pointer >= old q.pointer >= 0 } *)
 
+val crank (q: queue ~'a): unit
+writes { q.pointer }
+ensures { q.pointer = old q.pointer+1 }
+
 function current (q: queue ~'a): 'a = M.get q.contents q.pointer
 
 (*

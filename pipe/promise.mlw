@@ -30,6 +30,8 @@ end
 
 module GlobalPromise
 
+(* TODO: axiom relating obligations to eventually *)
+
 type obligation model { ghost mutable value: bool }
 
 constant eventually: bool
