@@ -205,16 +205,23 @@ requires { fresh src }
 requires { fresh dst }
 diverges
   = init ();
+(*
     reachable (any bool ensures { result <-> handled src });
+*)
     assert { go_sieve_init src dst };
     let p = dequeue src in
+(*
     reachable (any bool ensures { result <-> handled src });
+*)
+    reachable (any bool ensures { result <-> handled dst });
     go_sieve_1_mk src dst;
 assert { prime p };
     let filt = make(): queue int in
     let dst2 = make(): queue int in
     (* go prefix p dst2 dst *)			(* 1 *)
     assume { go_prefix_init p dst2 dst };
+
+    assume { ready dst -> handled dst };        (* TODO FIXME *)
 
     (* go sieve filt dst2 *)			(* 2 *)
     assert { "expl:go_sieve_req" go_sieve_req_1 filt dst2 };
@@ -245,11 +252,15 @@ invariant { forall x: int. mem x filt -> p <> x }
 invariant { ready src }
 invariant { ready filt }
 invariant { ?obligation <-> handled src }
-invariant { mem p dst }
 *)
+invariant { ((exists x: int. mem x src /\ prime x /\ not mem x dst) -> ready dst) } 
+invariant { ?obligation }
 'Begin:
         let n = dequeue src in
+(*
         reachable (any bool ensures { result <-> handled src });
+*)
+        reachable (any bool ensures { result <-> prime n /\ not mem n dst -> handled dst });
         go_sieve_1_mk src dst;
         if not (divides p n) then (
 assert { forall x: int. mem x src /\ not (divides p x) /\ x < n -> mem x filt };
@@ -258,6 +269,7 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
  abstract ensures { forall x: int. mem x filt -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d filt }
    ()
  end;
+assume { prime n /\ not mem n dst -> handled dst }; (* TODO FIXME *)
             float dst2;                                                  (* 2 *)
             float dst;                                                   (* 1 *)
             go_sieve_1 filt dst2;                                        (* 2 *)
@@ -276,14 +288,14 @@ assert { forall x: int. mem x (enqueued n filt) -> p <> x };
  end;
 *)
             go_sieve_2_mk src dst;                                       (* ? *)
-        );
-(*
+        )
+else assume { ready dst -> handled dst }; (* TODO FIXME *);
         check { "expl:conditional variant decrease"
             not (at ?obligation) 'Begin ->
 	    0 <= at (0) 'Begin /\ (0) < at (0) 'Begin
         };
-*)
-    done
+    done;
+    check { ?obligation }
 
 predicate go_generator_init (out: queue int) =
   ready out
