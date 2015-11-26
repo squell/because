@@ -52,6 +52,7 @@ ensures { eventually -> x }
 
 end
 
+(*
 module Test
 
 use import ref.Ref
@@ -91,3 +92,4 @@ diverges
    check { ?reachme }
 
 end
+*)

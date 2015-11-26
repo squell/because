@@ -1,0 +1,72 @@
+module PrototypeChan
+
+use import array.Array
+use import map.Map as M
+use import int.Int
+
+type chan 'a model { contents: map int 'a; mutable pointer: int }
+
+function enqueued (x: 'a) (q: chan 'a): chan 'a = { contents=q.contents[q.pointer<-x]; pointer=q.pointer+1 }
+
+function get (q: chan ~'a) (i: int): 'a = M.get q.contents i
+function elem (q: chan ~'a): map int 'a = q.contents
+function ([]) (q: chan ~'a) (i: int): 'a = get q i
+
+predicate fresh (q: chan ~'a) = q.pointer = 0
+
+val make unit: chan 'a
+ensures { fresh result }
+
+val float (q: chan ~'a): unit
+writes { q.pointer }
+ensures { q.pointer >= 0 }
+(* ensures { q.pointer >= old q.pointer >= 0 } *)
+
+function current (q: chan ~'a): 'a = M.get q.contents q.pointer
+
+(*
+val enqueue (x: ~'a) (q: chan ~'a): unit
+writes { q.pointer }
+ensures { old (current q) = x }
+ensures { q.pointer = old q.pointer + 1 }
+
+let dequeue (q: chan ~'a): 'a
+writes { q.pointer }
+ensures { old (current q) = result }
+ensures { q.pointer = old q.pointer + 1 }
+ = let x = any 'a in enqueue x q; x
+*)
+
+function cursor (q: chan ~'a): int = q.pointer
+
+predicate ready (q: chan ~'a)
+predicate closed (q: chan ~'a)
+predicate handled (q: chan ~'a)
+
+axiom queue_exclusion: forall q: chan 'a. not (ready q /\ closed q)
+
+predicate divergence
+
+val enqueue (x: ~'a) (q: chan ~'a): unit
+writes { q.pointer }
+requires { divergence \/ ready q }
+ensures { q = enqueued x (old q) }
+ensures { handled (old q) }
+
+let dequeue (q: chan ~'a): 'a
+writes { q.pointer }
+requires { divergence \/ ready q }
+ensures { q = enqueued result (old q) }
+ensures { handled (old q) }
+ = let x = any 'a in enqueue x q; x
+
+val crank (q: chan ~'a): unit
+writes { q.pointer }
+ensures { q.pointer = old q.pointer+1 }
+
+val productive (q: chan ~'a): bool
+requires { divergence \/ ready q \/ closed q }
+ensures { result <-> ready q }
+ensures { not result <-> closed q }
+
+end
