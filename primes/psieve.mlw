@@ -374,6 +374,14 @@ invariant { outp.pointer >= 0 }
 'Begin:
 
         (* float inp; *)
+	check { "expl:forwarding correctness" not ready outp ->
+                (forall q. go_generator_inv q    -> ready q /\ go_sieve_req_1 q outp) /\
+	        (forall q. go_sieve_inv_1 q outp -> ready q /\ go_generator_req q) };
+	check { "expl:forwarding termination"
+                exists q. go_generator_req q /\ go_generator_inv q /\
+                          go_sieve_req_1 q outp /\ go_sieve_inv_1 q outp /\
+                          ready outp /\ cursor q >= cursor inp };
+(*
 abstract
 ensures { inp.pointer >= 0 }
 ensures { go_generator_req inp }
@@ -407,6 +415,7 @@ variant { next_prime (inp[cursor inp-1]) - cursor inp }
            done;
         );
 end;
+*)
 
         let n = dequeue outp in
         go_sieve_2 inp outp;
