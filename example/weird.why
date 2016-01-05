@@ -1,0 +1,16 @@
+theory Weird
+
+(* Not all provers can discharge this goal, even though it looks trivial. *)
+
+type elt
+
+use import set.SetComprehension
+
+constant everything: set elt = 
+  comprehension (\x: elt. true)
+
+constant universe: set elt = everything
+
+goal life: universe = everything
+
+end

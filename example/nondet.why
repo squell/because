@@ -1,0 +1,20 @@
+theory NondetArray
+
+(* Demonstrates that Why can reason about an array
+   of two elements which contains a 2 and 3 but where we
+   don't know the order *)
+
+use import array.Array
+use import int.Int
+
+constant x: array int
+
+axiom x_len: length x = 2
+
+axiom x_has_2: exists i: int. 0 <= i < length x /\ x[i] = 2
+axiom x_has_3: exists i: int. 0 <= i < length x /\ x[i] = 3
+
+goal sum: x[0] + x[1] = 5
+goal diff: x[0] - x[1] = 1 \/ x[0] - x[1] = -1
+
+end
