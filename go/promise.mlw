@@ -31,10 +31,11 @@ end
 module GlobalPromise
 
 (* TODO: axiom relating obligations to eventually *)
+(*
+constant eventually: bool
+*)
 
 type obligation model { ghost mutable value: bool }
-
-constant eventually: bool
 
 val obligation: obligation
 
@@ -42,13 +43,16 @@ function (?) (x: obligation): bool
   = x.value
 
 val ghost init (): unit
+writes { obligation }
 ensures { ?obligation }
 
 val ghost reachable (x: bool): unit
 writes { obligation }
 reads { obligation }
 ensures { ?obligation <-> x /\ old ?obligation }
+(*
 ensures { eventually -> x }
+*)
 
 end
 
