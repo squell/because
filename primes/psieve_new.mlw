@@ -22,7 +22,9 @@ predicate go_generate_init (ready: state) (init: int) (out: chan int)
 predicate go_generate_req (ready: state) (init: int) (out: chan int) 
   = true
 predicate go_generate_inv (ready: state) (init: int) (out: chan int) 
-  = true
+  = ready => out
+   /\
+    ( forall i. 0 <= i < cursor out -> out[i] = init+i )
 
 val go_generate (ready: state) (init: int) (out: chan int): unit
 requires { "expl:go_generate_1" go_generate_req ready init out }
@@ -35,20 +37,20 @@ let generate (init: int) (out: chan int): unit
 requires { cursor out = 0 }
 diverges
  = P.init();
-assert { ?obligation };
    P.reachable (any bool ensures { result <-> handled out });
-assert { ?obligation <-> handled out };
    assume { this => out };
    assert { go_generate_init this init out };
    let x = ref init in
    while true do
       invariant { ?obligation <-> handled out }
       invariant { this => out }
+      invariant { forall i. 0 <= i < cursor out -> out[i] = init+i }
+      invariant { cursor out+init = !x }
 'Begin:
       send !x out this;
-      go_generate_mk this init out;
-      reachable (any bool ensures { result <-> handled out });
+      P.reachable (any bool ensures { result <-> handled out });
       assume { this => out };
+      go_generate_mk this init out;
       x := !x+1;
       check { "expl:conditional variant decrease"
             not (at ?obligation) 'Begin ->
