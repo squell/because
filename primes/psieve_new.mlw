@@ -8,9 +8,15 @@ use import int.Int
 use import ref.Ref
 
 (*
+// requires: cursor out = 0
+// ensures [*]: ready => out
+// ensures [out]: ready => out
+// ensures [out]: forall i. 0 <= i < cursor out -> out[i] = init+1
 func generate(init int, out chan<- int) {
 	x := init
 	for { 
+		// invariant: forall i. 0 <= i < cursor out -> out[i] = init+i
+		// invariant: cursor out + init = !x
 		out <- x
 		x++
 	}
