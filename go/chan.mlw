@@ -98,3 +98,20 @@ ensures { not result <-> closed q }
 *)
 
 end
+
+module Mem
+
+use import PrototypeChan
+use import int.Int
+
+predicate mem (e: 'a) (q: chan 'a) = exists i: int. 0 <= i < cursor q /\ q[i] = e
+
+function slice (q: chan 'a) (n: int): chan 'a = { contents = q.contents; pointer = n; id = q.id }
+
+lemma mem_0: forall x: 'a, q: chan 'a.
+  cursor q >= 0 -> mem x (enqueued x q)
+
+lemma mem_S: forall x y: 'a, q: chan 'a.
+  mem x q -> mem x (enqueued y q)
+
+end

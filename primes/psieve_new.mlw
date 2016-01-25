@@ -3,6 +3,7 @@ module PrimeNumberSieve
 use import number.Divisibility
 use import number.Prime
 use import chan.PrototypeChan as Q
+use import chan.Mem
 use import promise.GlobalPromise as P
 use import int.Int
 use import ref.Ref
@@ -23,7 +24,9 @@ func generate(init int, out chan<- int) {
 }
 *)
 
-predicate go_generate_init (ready: state) (init: int) (out: chan int)
+predicate go_generate_init_req (ready: state) (init: int) (out: chan int)
+  = cursor out = 0
+predicate go_generate_init_inv (ready: state) (init: int) (out: chan int)
   = ready => out
 predicate go_generate_req (ready: state) (init: int) (out: chan int) 
   = true
@@ -32,20 +35,20 @@ predicate go_generate_inv (ready: state) (init: int) (out: chan int)
    /\
     ( forall i. 0 <= i < cursor out -> out[i] = init+i )
 
-val go_generate (ready: state) (init: int) (out: chan int): unit
+val go_generate_1 (ready: state) (init: int) (out: chan int): unit
 requires { "expl:go_generate_1" go_generate_req ready init out }
 ensures  { go_generate_inv ready init out }
-val go_generate_mk (ready: state) (init: int) (out: chan int): unit
+val go_generate_mk_1 (ready: state) (init: int) (out: chan int): unit
 requires { "expl:go_generate_1" go_generate_inv ready init out }
 ensures  { go_generate_req ready init out }
 
 let generate (init: int) (out: chan int): unit
-requires { cursor out = 0 }
+requires { go_generate_init_req this init out }
 diverges
  = P.init();
    P.reachable (any bool ensures { result <-> handled out });
    assume { this => out };
-   assert { go_generate_init this init out };
+   assert { go_generate_init_inv this init out };
    let x = ref init in
    while true do
       invariant { ?obligation <-> handled out }
@@ -56,7 +59,7 @@ diverges
       send !x out this;
       P.reachable (any bool ensures { result <-> handled out });
       assume { this => out };
-      go_generate_mk this init out;
+      go_generate_mk_1 this init out;
       x := !x+1;
       check { "expl:conditional variant decrease"
             not (at ?obligation) 'Begin ->
@@ -65,17 +68,97 @@ diverges
    done;
    check { ?obligation }
 
+predicate go_sieve_init_req (ready: state) (src: chan int) (out: chan int)
+  = true
+predicate go_sieve_init_inv (ready: state) (src: chan int) (out: chan int)
+  = ready => src
+predicate go_sieve_req_1 (ready: state) (src: chan int) (out: chan int) 
+  = (forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src)
+predicate go_sieve_inv_1 (ready: state) (src: chan int) (out: chan int) 
+  = ((exists x: int. mem x src /\ prime x /\ not mem x out) -> ready => out)
+  /\
+    ((forall x: int. mem x src /\ prime x -> mem x out) -> ready => src)
+predicate go_sieve_req_2 (ready: state) (src: chan int) (out: chan int) 
+  = true
+predicate go_sieve_inv_2 (ready: state) (src: chan int) (out: chan int) 
+  = 
+   (forall x: int. mem x out -> mem x src /\ prime x)
+  /\
+   (forall i j: int. 0 <= i < j < cursor out -> out[i] <> out[j])
+  /\
+   ready => src
+  /\
+   ((exists x: int. mem x src /\ prime x /\ not mem x out) -> ready => out)
+
+val go_sieve_1 (ready: state) (src: chan int) (out: chan int): unit
+requires { "expl:go_sieve_1" go_sieve_req_1 ready src out }
+ensures  { go_sieve_inv_1 ready src out }
+val go_sieve_mk_1 (ready: state) (src: chan int) (out: chan int): unit
+requires { "expl:go_sieve_1" go_sieve_inv_1 ready src out }
+ensures  { go_sieve_req_1 ready src out }
+val go_sieve_2 (ready: state) (src: chan int) (out: chan int): unit
+requires { "expl:go_sieve_2" go_sieve_req_2 ready src out }
+ensures  { go_sieve_inv_2 ready src out }
+val go_sieve_mk_2 (ready: state) (src: chan int) (out: chan int): unit
+requires { "expl:go_sieve_2" go_sieve_inv_2 ready src out }
+ensures  { go_sieve_req_2 ready src out }
+
+let lemma go_generator_inv_eq (s: state) (y x: int) (q: chan int)
+requires { go_generate_inv s y q }
+ensures { y <= x < cursor q+y <-> mem x q }
+ = assert { y <= x < cursor q+y -> q[x-y] = x }
 
 (*
 func main() {
 	outp := make(chan int)
 	inp := make(chan int)
 	go sieve(inp, outp)
-	go generate(inp)
+	go generate(2, inp)
 	for {
 		n := <-outp
 	}
 }
 *)
+
+use import infprime.NextPrime
+
+let main (): unit
+diverges
+ = let outp = make(): chan int in
+   let inp = make(): chan int in
+   let go_sieve = any state in
+   assert { go_sieve_init_req go_sieve inp outp };
+   assume { go_sieve_init_inv go_sieve inp outp };
+   let go_generate = any state in
+   assert { go_generate_init_req go_generate 2 inp };
+   assume { go_generate_init_inv go_generate 2 inp };
+   while true do
+     invariant { cursor inp >= 0 }
+     invariant { cursor outp >= 0 }
+     invariant { go_generate => inp }
+     invariant { go_sieve => inp }
+(* fwd-variant 1 *)
+     invariant { forall x. mem x outp -> mem x inp }
+'Fwd:
+     while not any bool ensures { result <-> go_sieve => outp } do
+       invariant { cursor inp >= 0 }
+       invariant { cursor outp >= 0 }
+       invariant { go_generate => inp }
+       invariant { go_sieve => inp \/ go_sieve => outp }
+   (* fwd-variant 1 *)
+       invariant { forall x. mem x outp -> mem x inp }
+       invariant { go_sieve => outp \/ inp[cursor inp-1] < at (some_larger_prime (inp[cursor inp-1])) 'Fwd }
+       variant { at (some_larger_prime (inp[cursor inp-1])) 'Fwd - cursor inp }
+       inp[go_sieve <- go_generate];
+       go_generate_1 go_generate 2 inp;
+       go_sieve_1 go_sieve inp outp;
+   (* fwd-variant 1 *)
+       assert { not mem inp[cursor inp-1] outp };
+       assert { (prime inp[cursor inp-1]) -> go_sieve => outp };
+     done;
+     let n = recv outp go_sieve in
+     go_sieve_2 go_sieve inp outp;
+     assert { prime n };
+   done
 
 end
