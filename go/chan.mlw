@@ -6,8 +6,8 @@ use import int.Int
 
 type id
 
-type chan 'a model { contents: map int 'a; mutable pointer: int; id: id; offset: int }
-  invariant { 0 <= self.offset <= self.pointer }
+type chan 'a model { contents: map int 'a; mutable pointer: int; id: id }
+  invariant { 0 <= self.pointer }
 
 type state model { mutable program_counter: id }
 
@@ -31,13 +31,13 @@ ensures { s = old s :: q }
 predicate progress (q: chan ~'a)
  = exists s: state. s => q
 
-function enqueued (x: 'a) (q: chan 'a): chan 'a = { contents=q.contents[q.pointer<-x]; pointer=q.pointer+1; id=q.id; offset=q.offset }
+function enqueued (x: 'a) (q: chan 'a): chan 'a = { contents=q.contents[q.pointer<-x]; pointer=q.pointer+1; id=q.id }
 
 function get (q: chan ~'a) (i: int): 'a = M.get q.contents i
 function elem (q: chan ~'a): map int 'a = q.contents
 function ([]) (q: chan ~'a) (i: int): 'a = get q i
 
-predicate fresh (q: chan ~'a) = q.pointer = q.offset = 0
+predicate fresh (q: chan ~'a) = q.pointer = 0
 
 val make unit: chan 'a
 ensures { fresh result }
@@ -109,9 +109,7 @@ predicate mem_sub (e: 'a) (q: chan 'a) (a b: int) = exists i: int. a <= i < b <=
 
 predicate mem (e: 'a) (q: chan 'a) = mem_sub e q 0 (q.pointer)
 
-predicate mem_add (e: 'a) (q: chan 'a) = mem_sub e q (q.offset) (q.pointer)
-
-function slice (q: chan 'a) (n: int): chan 'a = { contents = q.contents; pointer = n; id = q.id; offset = q.offset }
+function slice (q: chan 'a) (n: int): chan 'a = { contents = q.contents; pointer = n; id = q.id }
 
 lemma mem_0: forall x: 'a, q: chan 'a.
   q.pointer >= 0 -> mem x (enqueued x q)
@@ -119,10 +117,10 @@ lemma mem_0: forall x: 'a, q: chan 'a.
 lemma mem_S: forall x y: 'a, q: chan 'a.
   mem x q -> mem x (enqueued y q)
 
-lemma mem_add_0: forall x: 'a, q: chan 'a.
-  q.pointer >= q.offset >= 0 -> mem_add x (enqueued x q)
+lemma mem_sub_0: forall x: 'a, q: chan 'a, i: int.
+  q.pointer >= i >= 0 -> mem_sub x (enqueued x q) i (q.pointer+1)
 
-lemma mem_add_S: forall x y: 'a, q: chan 'a.
-  mem_add x q -> mem_add x (enqueued y q)
+lemma mem_sub_S: forall x y: 'a, q: chan 'a, i j: int.
+  mem_sub x q i j -> mem_sub x (enqueued y q) i j
 
 end
