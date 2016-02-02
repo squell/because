@@ -1,0 +1,81 @@
+(*
+
+Algorithm for computing multiplicative inverses in a field, due to
+Colin Plumb: ftp://ftp.csc.fi/index/crypt/math/inverses-modulo-n.txt
+
+datatype mult_inverse(datatype a, datatype b)
+{
+        datatype t0, t1, c, q;
+ 
+        t1 = 1;
+ 
+        if (b == 1)
+                return t1;
+ 
+        t0 = a / b;
+        c = a % b;
+ 
+        while (c != 1) {
+                q = b / c;
+                b %= c;
+                t1 += q * t0;
+                if (b == 1)
+                        return t1;
+ 
+                q = c / b;
+                c %= b;
+                t0 += q * t1;
+        }
+        return a-t0;
+}
+
+*)
+
+module Inverse_Mult
+
+use import ref.Ref
+use import int.Int
+use import int.EuclideanDivision
+
+type datatype = int
+
+exception Return datatype
+
+let mult_inverse (a0: datatype) (b0: datatype): datatype
+  = let a  = ref a0 in (* copy arguments to local variables *)
+    let b  = ref b0 in
+    let t0 = ref (any datatype) in (* uninitialized data *)
+    let t1 = ref (any datatype) in
+    let c  = ref (any datatype) in
+    let q  = ref (any datatype) in
+
+    try
+      t1 := 1;
+
+      if (!b = 1) then (
+        raise (Return !t1);
+      );
+ 
+      t0 := div !a !b;
+      c := mod !a !b;
+
+      while (!c <> 1) do
+         q := div !b !c;
+         b := mod !b !c;
+         t1 := !t1 + !q * !t0;
+         if (!b = 1) then (
+           raise (Return !t1);
+         );
+
+         q := div !c !b;
+         c := mod !c !b;
+         t0 := !t0 + !q * !t1
+      done;
+
+      raise (Return (!a - !t0))
+
+    with Return result ->
+      result
+    end
+
+end
