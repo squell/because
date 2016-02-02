@@ -43,6 +43,7 @@ exception Return datatype
 
 let mult_inverse (a0: datatype) (b0: datatype): datatype
 requires { a0 > 1 }
+requires { b0 > 0 }
 ensures { mod (result*b0) a0 = 1 }
   = let a  = ref a0 in (* copy arguments to local variables *)
     let b  = ref b0 in
@@ -50,6 +51,9 @@ ensures { mod (result*b0) a0 = 1 }
     let t1 = ref (any datatype) in
     let c  = ref (any datatype) in
     let q  = ref (any datatype) in
+
+    let ghost s0 = ref 1 in
+    let ghost s1 = ref 0 in
 
     try
       t1 := 1;
@@ -62,18 +66,25 @@ ensures { mod (result*b0) a0 = 1 }
       c := mod !a !b;
 
       while (!c <> 1) do
+         invariant {   !s0*a0 - !t0*b0 = !c > 0 }
+         invariant { - !s1*a0 + !t1*b0 = !b > 0 }
          q := div !b !c;
          b := mod !b !c;
          t1 := !t1 + !q * !t0;
+         s1 := !s1 + !q * !s0;
+         assert { - !s1*a0 + !t1*b0 = !b };
+         assert { !b > 0 };
          if (!b = 1) then (
            raise (Return !t1);
          );
 
          q := div !c !b;
          c := mod !c !b;
-         t0 := !t0 + !q * !t1
+         t0 := !t0 + !q * !t1;
+         s0 := !s0 + !q * !s1;
       done;
 
+      assert { mod (!a*b0 - !t0*b0) a0 = 1 };
       raise (Return (!a - !t0))
 
     with Return result ->
