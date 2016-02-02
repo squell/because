@@ -42,6 +42,7 @@ type datatype = int
 exception Return datatype
 
 let mult_inverse (a0: datatype) (b0: datatype): datatype
+requires { a0 > 1 }
 ensures { mod (result*b0) a0 = 1 }
   = let a  = ref a0 in (* copy arguments to local variables *)
     let b  = ref b0 in
