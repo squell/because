@@ -36,14 +36,19 @@ module Inverse_Mult
 use import ref.Ref
 use import int.Int
 use import int.EuclideanDivision
+use import number.Gcd
 
 type datatype = int
 
 exception Return datatype
 
+lemma mod_cut_law:
+  forall d x y: datatype. mod x d = 0 -> mod (x + y) d = mod y d
+
 let mult_inverse (a0: datatype) (b0: datatype): datatype
 requires { a0 > 1 }
 requires { b0 > 0 }
+requires { gcd a0 b0 = 1 }
 ensures { mod (result*b0) a0 = 1 }
   = let a  = ref a0 in (* copy arguments to local variables *)
     let b  = ref b0 in
@@ -68,6 +73,7 @@ ensures { mod (result*b0) a0 = 1 }
       while (!c <> 1) do
          invariant {   !s0*a0 - !t0*b0 = !c > 0 }
          invariant { - !s1*a0 + !t1*b0 = !b > 0 }
+         invariant { gcd !b !c = 1 }
          q := div !b !c;
          b := mod !b !c;
          t1 := !t1 + !q * !t0;
@@ -75,6 +81,8 @@ ensures { mod (result*b0) a0 = 1 }
          assert { - !s1*a0 + !t1*b0 = !b };
          assert { !b > 0 };
          if (!b = 1) then (
+           assert { mod (- !s1*a0) a0 = 0 };
+           assert { mod (- !s1*a0 + !t1*b0) a0 = 1 };
            raise (Return !t1);
          );
 
