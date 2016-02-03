@@ -43,7 +43,7 @@ type datatype = int
 exception Return datatype
 
 lemma mod_cut_law:
-  forall d x y: datatype. mod x d = 0 -> mod (x + y) d = mod y d
+  forall d x y: datatype. d > 0 -> mod x d = 0 -> mod (x + y) d = mod y d
 
 let mult_inverse (a0: datatype) (b0: datatype): datatype
 requires { a0 > 1 }
@@ -92,7 +92,8 @@ ensures { mod (result*b0) a0 = 1 }
          s0 := !s0 + !q * !s1;
       done;
 
-      assert { mod (!a*b0 - !t0*b0) a0 = 1 };
+      assert { mod (!s0*a0 - !t0*b0) a0 = 1 };
+      assert { mod (a0*b0 - !t0*b0) a0 = 1 };
       raise (Return (!a - !t0))
 
     with Return result ->
