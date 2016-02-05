@@ -36,8 +36,7 @@ func main() {
 		go Table(i, forks[i])
 	}
 
-	var eating chan int
-	eating = make(chan int)
+	var eating = make(chan int)
 	for i := range forks {
 		if i == 0 {
 			go Lefty(i, eating, forks[i], forks[(i+1)%5])
