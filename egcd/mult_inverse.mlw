@@ -90,6 +90,7 @@ ensures { mod (result*b0) a0 = 1 }
            raise (Return !t1);
          );
 
+         assert { 0 <= !t1 };
          q := div !c !b;
          c := mod !c !b;
          t0 := !t0 + !q * !t1;
