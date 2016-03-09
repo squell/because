@@ -75,6 +75,8 @@ ensures { mod (result*b0) a0 = 1 }
          invariant { - !s1*a0 + !t1*b0 = !b > 0 }
          invariant { gcd !b !c = 1 }
          invariant { !t0 * !b + !t1 * !c <= a0 }
+         invariant { 0 <= !t0 }
+         invariant { 0 <= !t1 }
          variant { !c }
          q := div !b !c;
          b := mod !b !c;
