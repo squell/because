@@ -2,7 +2,6 @@ module MergeSort
   use import int.Int
   use import list.List
   use import list.Length
-  use import list.Mem
   use import list.NumOcc
   use import list.Append
   use import list.SortedInt
@@ -26,7 +25,6 @@ module MergeSort
   let rec merge (a b: list int): list int
   variant { length a + length b }
   ensures { sorted a -> sorted b -> sorted result }
-  ensures { forall e. mem e a \/ mem e b <-> mem e result }
   ensures { forall e. num_occ e a + num_occ e b = num_occ e result }
   = match a, b with
     | (Cons x xs, Cons y ys) -> 
