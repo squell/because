@@ -32,6 +32,8 @@ module MergeSort
     | _ -> a ++ b
     end
 
+  lemma sorted_singleton: forall x. length x = 1 -> sorted x
+
   let rec sort (data: list int): list int
   variant { length data }
   ensures { sorted result }
