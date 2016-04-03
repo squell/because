@@ -23,6 +23,8 @@ module MergeSort
 
   let rec merge (a b: list int): list int
   variant { length a + length b }
+  ensures { sorted a -> sorted b -> sorted result }
+  ensures { forall e. mem e a \/ mem e b <-> mem e result }
   = match a, b with
     | (Cons x xs, Cons y ys) -> 
         if x <= y then Cons x (merge xs b) else Cons y (merge a ys)
@@ -31,6 +33,7 @@ module MergeSort
 
   let rec sort (data: list int): list int
   variant { length data }
+  ensures { sorted result }
   = if length data <= 1 then 
       data 
     else 
