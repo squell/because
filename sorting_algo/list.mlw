@@ -1,0 +1,34 @@
+module MergeSort
+  use import int.Int
+  use import list.List
+  use import list.Length
+  use import list.Mem
+  use import list.Append
+  use import list.SortedInt
+
+  let rec split (data: list int): (list int, list int)
+  variant { length data }
+  = match data with
+    | Nil -> (Nil, Nil)
+    | Cons _ Nil -> (data, Nil)
+    | Cons x (Cons y rest) -> 
+        let xs,ys = split rest in (Cons x xs, Cons y ys)
+    end
+
+  let rec merge (a b: list int): list int
+  variant { length a + length b }
+  = match a, b with
+    | (Cons x xs, Cons y ys) -> 
+        if x <= y then Cons x (merge xs b) else Cons y (merge a ys)
+    | _ -> a ++ b
+    end
+
+  let rec sort (data: list int): list int
+  variant { length data }
+  = if length data <= 1 then 
+      data 
+    else 
+      let l, r = split data in
+      merge (sort l) (sort r)
+
+end
