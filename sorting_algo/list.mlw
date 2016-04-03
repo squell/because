@@ -3,6 +3,7 @@ module MergeSort
   use import list.List
   use import list.Length
   use import list.Mem
+  use import list.NumOcc
   use import list.Append
   use import list.SortedInt
 
@@ -14,6 +15,7 @@ module MergeSort
 *)
   returns { (a,b) -> length data = length a + length b }
   returns { (_,b) -> length data > 1 -> 0 < length b < length data }
+  returns { (a,b) -> forall e. num_occ e a + num_occ e b = num_occ e data }
   = match data with
     | Nil -> (Nil, Nil)
     | Cons _ Nil -> (data, Nil)
@@ -25,6 +27,7 @@ module MergeSort
   variant { length a + length b }
   ensures { sorted a -> sorted b -> sorted result }
   ensures { forall e. mem e a \/ mem e b <-> mem e result }
+  ensures { forall e. num_occ e a + num_occ e b = num_occ e result }
   = match a, b with
     | (Cons x xs, Cons y ys) -> 
         if x <= y then Cons x (merge xs b) else Cons y (merge a ys)
@@ -34,6 +37,7 @@ module MergeSort
   let rec sort (data: list int): list int
   variant { length data }
   ensures { sorted result }
+  ensures { forall e. num_occ e data = num_occ e result }
   = if length data <= 1 then 
       data 
     else 
