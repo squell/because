@@ -17,7 +17,7 @@ lemma antisymmetry_of_subset:
 
 function f (set elt): set elt
 
-axiom f_monotonic: 
+axiom f_is_monotonic:
   forall x y: set elt. subset x y -> subset (f x) (f y)
 
 function postfixpoints: set (set elt) = 
@@ -56,7 +56,7 @@ lemma antisymmetry_of_subset:
 
 function f (set elt): set elt
 
-axiom f_monotonic: 
+axiom f_is_monotonic:
   forall x y: set elt. subset x y -> subset (f x) (f y)
 
 function postfixpoints: set (set elt) = 

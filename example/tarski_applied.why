@@ -1,0 +1,40 @@
+theory TarskiApplication
+
+use import set.SetComprehension
+use import set.Set
+use import int.Int
+
+function sal_wolffs (s: set int): set int
+ = add 0 (map (\x: int. x+1) s)
+
+goal sal_wolffs_is_monotonic:
+  forall x y: set int. subset x y -> subset (sal_wolffs x) (sal_wolffs y)
+
+clone tarski.KnasterTarski with type elt = int, function f = sal_wolffs
+
+goal has_fixpoint: exists s: set int. sal_wolffs s = s
+
+end
+
+theory TarskContradiction
+
+use import set.SetComprehension
+
+function dubious (s: set int): set int
+ = singleton (choose s)
+
+goal has_fixpoint: exists s: set int. dubious s = s
+
+clone tarski.KnasterTarski with type elt = int, function f = dubious
+
+lemma not_monotonic:
+  not forall x y: set int. subset x y -> subset (dubious x) (dubious y)
+
+(*
+lemma hmm_thats_funny:
+  dubious (union (singleton 1) (singleton 2)) = singleton 1 = singleton 2
+*)
+
+goal woops: false
+
+end
