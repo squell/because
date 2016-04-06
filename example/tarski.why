@@ -1,84 +1,39 @@
 theory KnasterTarski 
-"Using axiomatic definition of mu"
 
-type elt
-
-use import set.SetComprehension
-
-function intersect (fam: set (set elt)): set elt
-  = comprehension (\x: elt. forall y:set elt. mem y fam -> mem x y)
-
-lemma intersect_fact:
-  forall fam: set (set elt), e:elt. 
-      (forall x: set elt. mem x fam -> mem e x) <-> mem e (intersect fam)
-
-lemma antisymmetry_of_subset:
-  forall a b: set elt. (subset a b /\ subset b a) -> a = b
-
-function f (set elt): set elt
-
-axiom f_is_monotonic:
-  forall x y: set elt. subset x y -> subset (f x) (f y)
-
-function postfixpoints: set (set elt) = 
-  comprehension (\x: set elt. subset (f x) x)
-
-constant mu: set elt
-
-axiom mu_def: mu = intersect postfixpoints
-
-lemma fmu_subset_of_all:
-  forall x: set elt. mem x postfixpoints -> subset (f mu) x
-
-lemma fmu_subset_of_mu:
-  subset (f mu) mu
-
-goal fixpoint: exists x:set elt. f x = x
-
-end
-
-theory KnasterTarski0 
-"Using equational definition of mu"
-
-type elt
+type t
 
 use import set.SetComprehension
 
-function intersect (fam: set (set elt)): set elt
-  = comprehension (\x: elt. forall y:set elt. mem y fam -> mem x y)
+function intersect (fam: set (set t)): set t
+  = comprehension (\x: t. forall y:set t. mem y fam -> mem x y)
 
-lemma intersect_fact:
-  forall fam: set (set elt), e:elt. 
-      (forall x: set elt. mem x fam -> mem e x) <-> mem e (intersect fam)
-
-lemma antisymmetry_of_subset:
-  forall a b: set elt. (subset a b /\ subset b a) -> a = b
-
-function f (set elt): set elt
+function f (set t): set t
 
 axiom f_is_monotonic:
-  forall x y: set elt. subset x y -> subset (f x) (f y)
+  forall x y: set t. subset x y -> subset (f x) (f y)
 
-function postfixpoints: set (set elt) = 
-  comprehension (\x: set elt. subset (f x) x)
+constant prefixpoints: set (set t) = 
+  comprehension (\x: set t. subset (f x) x)
 
-constant mu: set elt = intersect postfixpoints
+constant mu: set t = intersect prefixpoints
 
-lemma fmu_subset_of_all:
-  forall x: set elt. mem x postfixpoints -> subset (f mu) x
+lemma intersect_common_subset:
+  forall fam: set (set t).
+    forall x: set t. mem x fam -> subset (intersect fam) x
+
+lemma intersect_greatest_common_subset:
+  forall fam: set (set t),  s: set t.
+    (forall x: set t. mem x fam -> subset s x) -> subset s (intersect fam)
 
 lemma fmu_subset_of_mu:
   subset (f mu) mu
-
-lemma ffmu_subset_of_fmu:
-  subset (f (f mu)) (f mu)
-
-lemma fmu_is_postfix:
-  mem (f mu) postfixpoints
 
 lemma mu_subset_of_fmu:
   subset mu (f mu)
 
-goal fixpoint: exists x:set elt. f x = x
+lemma mu_is_fixpoint:
+  f mu == mu
+
+goal fixpoint: exists x:set t. f x = x
 
 end

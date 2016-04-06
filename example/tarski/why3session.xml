@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="4">
+<prover id="0" name="CVC3" version="2.4.1" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="1" name="CVC4" version="1.4" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="2" name="Eprover" version="1.8-001" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="4" name="Alt-Ergo" version="0.95.2" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="5" name="Z3" version="4.3.1" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="6" name="Coq" version="8.4pl4" timelimit="13" steplimit="1" memlimit="1000"/>
+<file name="../tarski.why" expanded="true">
+<theory name="KnasterTarski" sum="601a7b255acf0515d5f5317cfdc809f7" expanded="true">
+ <goal name="intersect_common_subset" expanded="true">
+ <proof prover="0" steplimit="-1"><result status="valid" time="0.15"/></proof>
+ <proof prover="1" steplimit="-1"><result status="valid" time="0.20"/></proof>
+ <proof prover="4" steplimit="-1"><result status="valid" time="0.04" steps="12"/></proof>
+ <proof prover="5" steplimit="-1"><result status="valid" time="0.05"/></proof>
+ <proof prover="6" steplimit="-1" edited="tarski_KnasterTarski_intersect_common_subset_2.v"><result status="valid" time="3.30"/></proof>
+ <transf name="inline_goal" expanded="true">
+  <goal name="intersect_common_subset.1" expl="1.">
+  <proof prover="2" steplimit="-1"><result status="valid" time="0.17"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="intersect_greatest_common_subset" expanded="true">
+ <proof prover="0" steplimit="-1"><result status="valid" time="0.29"/></proof>
+ <proof prover="1" steplimit="-1"><result status="valid" time="0.43"/></proof>
+ <proof prover="4" steplimit="-1"><result status="valid" time="0.08" steps="25"/></proof>
+ <proof prover="5" steplimit="-1"><result status="valid" time="0.05"/></proof>
+ <proof prover="6" steplimit="-1" edited="tarski_KnasterTarski_intersect_greatest_common_subset_2.v"><result status="valid" time="3.43"/></proof>
+ <transf name="inline_goal" expanded="true">
+  <goal name="intersect_greatest_common_subset.1" expl="1." expanded="true">
+  <proof prover="2" steplimit="-1"><result status="valid" time="0.64"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="fmu_subset_of_mu" expanded="true">
+ <transf name="eliminate_definition_func" expanded="true">
+  <goal name="fmu_subset_of_mu.1" expl="1." expanded="true">
+  <proof prover="0"><result status="valid" time="0.14"/></proof>
+  <proof prover="1"><result status="valid" time="0.15"/></proof>
+  <proof prover="2" timelimit="60"><result status="timeout" time="60.51"/></proof>
+  <proof prover="4"><result status="valid" time="0.09" steps="41"/></proof>
+  <proof prover="5"><result status="valid" time="5.46"/></proof>
+  <proof prover="6" edited="tarski_KnasterTarski_fmu_subset_of_mu_1.v"><result status="valid" time="3.41"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="mu_subset_of_fmu" expanded="true">
+ <transf name="eliminate_definition" expanded="true">
+  <goal name="mu_subset_of_fmu.1" expl="1." expanded="true">
+  <proof prover="0"><result status="valid" time="0.12"/></proof>
+  <proof prover="1"><result status="valid" time="0.25"/></proof>
+  <proof prover="2"><result status="valid" time="0.11"/></proof>
+  <proof prover="4"><result status="valid" time="0.04" steps="15"/></proof>
+  <proof prover="5"><result status="valid" time="0.17"/></proof>
+  <proof prover="6" edited="tarski_KnasterTarski_mu_subset_of_fmu_1.v"><result status="valid" time="3.54"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="mu_is_fixpoint" expanded="true">
+ <transf name="eliminate_definition" expanded="true">
+  <goal name="mu_is_fixpoint.1" expl="1." expanded="true">
+  <proof prover="0"><result status="valid" time="0.12"/></proof>
+  <proof prover="1"><result status="valid" time="0.23"/></proof>
+  <proof prover="2"><result status="valid" time="0.45"/></proof>
+  <proof prover="4"><result status="valid" time="0.05" steps="26"/></proof>
+  <proof prover="5"><result status="valid" time="0.05"/></proof>
+  <proof prover="6" edited="tarski_KnasterTarski_mu_is_fixpoint_1.v"><result status="valid" time="3.68"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="fixpoint" expanded="true">
+ <transf name="eliminate_definition" expanded="true">
+  <goal name="fixpoint.1" expl="1." expanded="true">
+  <proof prover="0"><result status="valid" time="0.06"/></proof>
+  <proof prover="1"><result status="valid" time="0.08"/></proof>
+  <proof prover="2"><result status="valid" time="0.03"/></proof>
+  <proof prover="4"><result status="valid" time="0.03" steps="10"/></proof>
+  <proof prover="5"><result status="valid" time="0.02"/></proof>
+  <proof prover="6" edited="tarski_KnasterTarski_fixpoint_1.v"><result status="valid" time="3.48"/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+</file>
+</why3session>
