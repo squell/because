@@ -6,7 +6,7 @@
 <prover id="4" name="Eprover" version="1.8-001" timelimit="13" steplimit="1" memlimit="1000"/>
 <prover id="5" name="Alt-Ergo" version="0.95.2" timelimit="13" steplimit="1" memlimit="1000"/>
 <file name="../csb.why" expanded="true">
-<theory name="CantorSchroederBernstein" sum="26bcc077676c1cfa6806328a3f889e20" expanded="true">
+<theory name="CantorSchroederBernstein" sum="fc93f7deb93cfa1f8d5bd0e991aa9142" expanded="true">
  <goal name="inverse_def">
  <transf name="compute_in_goal">
   <goal name="inverse_def.1" expl="1.">
@@ -17,15 +17,15 @@
  <goal name="phi_monotonic">
  <proof prover="5"><result status="valid" time="0.27" steps="173"/></proof>
  </goal>
- <goal name="diff_fact">
- <proof prover="5"><result status="valid" time="0.42" steps="426"/></proof>
- </goal>
  <goal name="phi_corollary">
  <transf name="eliminate_definition_func">
   <goal name="phi_corollary.1" expl="1.">
-  <proof prover="5"><result status="valid" time="0.05" steps="36"/></proof>
+  <proof prover="5" steplimit="-1"><result status="valid" time="0.04" steps="19"/></proof>
   </goal>
  </transf>
+ </goal>
+ <goal name="image_def">
+ <proof prover="4" steplimit="-1"><result status="valid" time="0.17"/></proof>
  </goal>
  <goal name="h_disjointness">
  <transf name="eliminate_definition_func">
@@ -35,7 +35,7 @@
    <proof prover="2"><result status="valid" time="0.19"/></proof>
    </goal>
    <goal name="h_disjointness.1.2" expl="2.">
-   <proof prover="2"><result status="valid" time="1.98"/></proof>
+   <proof prover="2"><result status="valid" time="0.25"/></proof>
    </goal>
   </transf>
   </goal>
@@ -44,7 +44,7 @@
  <goal name="h_coverage">
  <transf name="eliminate_definition_func">
   <goal name="h_coverage.1" expl="1.">
-  <proof prover="4" steplimit="-1"><result status="valid" time="1.02"/></proof>
+  <proof prover="2" steplimit="-1"><result status="valid" time="0.26"/></proof>
   </goal>
  </transf>
  </goal>
@@ -53,19 +53,19 @@
   <goal name="h_injects.1" expl="1.">
   <transf name="inline_goal">
    <goal name="h_injects.1.1" expl="1.">
-   <proof prover="2"><result status="valid" time="0.43"/></proof>
+   <proof prover="2"><result status="valid" time="0.34"/></proof>
    </goal>
   </transf>
   </goal>
  </transf>
  </goal>
  <goal name="h_reverse_1">
- <proof prover="5"><result status="valid" time="0.07" steps="11"/></proof>
+ <proof prover="5"><result status="valid" time="0.06" steps="11"/></proof>
  </goal>
  <goal name="h_reverse_2">
  <transf name="eliminate_definition_func">
   <goal name="h_reverse_2.1" expl="1.">
-  <proof prover="2"><result status="valid" time="0.27"/></proof>
+  <proof prover="2"><result status="valid" time="0.68"/></proof>
   </goal>
  </transf>
  </goal>

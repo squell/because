@@ -33,11 +33,12 @@ clone tarski.KnasterTarski with type t = a, function f = phi
 
 constant fixpoint: set a = KnasterTarski.mu
 
-lemma diff_fact:
-  forall s t: set 'a. diff all s == t <-> s == diff all t
-
+(* unnecessary, but speeds things up *)
 lemma phi_corollary:
-  diff all fixpoint = (map g (diff all (map f fixpoint)))
+  fixpoint = diff all (map g (diff all (map f fixpoint)))
+
+lemma image_def:
+  forall x. mem x (map g all) -> (exists y. g y = x)
 
 function h (x: a): b
   = if mem x fixpoint then f x else inverse g x
@@ -46,7 +47,7 @@ lemma h_disjointness:
   forall x. mem x (map f fixpoint) <-> mem (g x) fixpoint
 
 lemma h_coverage:
-  forall x. mem x fixpoint \/ (exists y. g y = x)
+  forall x. mem x fixpoint \/ mem x (map g all)
 
 lemma h_injects:
   injective h
