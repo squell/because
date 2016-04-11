@@ -1,11 +1,37 @@
+theory Collection
+
+use import set.SetComprehension
+
+function intersect (fam: set (set 'a)): set 'a
+  = comprehension (\x: 'a. forall y:set 'a. mem y fam -> mem x y)
+
+lemma intersect_common_subset:
+  forall fam: set (set 'a).
+    forall x: set 'a. mem x fam -> subset (intersect fam) x
+
+lemma intersect_greatest_common_subset:
+  forall fam: set (set 'a),  s: set 'a.
+    (forall x: set 'a. mem x fam -> subset s x) -> subset s (intersect fam)
+
+function union (fam: set (set 'a)): set 'a
+  = comprehension (\x. exists y. mem y fam /\ mem x y)
+
+lemma union_common_superset:
+  forall fam: set (set 'a).
+    forall x. mem x fam -> subset x (union fam)
+
+lemma union_least_common_superset:
+  forall fam: set (set 'a), s.
+    (forall x. mem x fam -> subset x s) -> subset (union fam) s
+
+end
+
 theory KnasterTarski 
 
 type t
 
 use import set.SetComprehension
-
-function intersect (fam: set (set t)): set t
-  = comprehension (\x: t. forall y:set t. mem y fam -> mem x y)
+use import Collection
 
 function f (set t): set t
 
@@ -16,14 +42,6 @@ constant prefixpoints: set (set t) =
   comprehension (\x: set t. subset (f x) x)
 
 constant mu: set t = intersect prefixpoints
-
-lemma intersect_common_subset:
-  forall fam: set (set t).
-    forall x: set t. mem x fam -> subset (intersect fam) x
-
-lemma intersect_greatest_common_subset:
-  forall fam: set (set t),  s: set t.
-    (forall x: set t. mem x fam -> subset s x) -> subset s (intersect fam)
 
 lemma fmu_subset_of_mu:
   subset (f mu) mu
