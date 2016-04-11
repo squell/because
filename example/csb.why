@@ -1,0 +1,63 @@
+theory CantorSchroederBernstein
+
+use import set.SetComprehension
+use import set.Set
+use import int.Int
+
+predicate injective (f: 'a->'b)
+  = forall x y. f x = f y -> x = y
+
+function inverse (f: 'a->'b): 'b -> 'a
+  = \y. choose (comprehension (\x. f x = y))
+
+lemma inverse_def:
+  forall f: 'a->'b. injective f ->
+    forall x. inverse f (f x) = x
+
+type a
+type b
+
+function f (x: a): b
+function g (x: b): a
+
+axiom f_is_injective: injective f 
+axiom g_is_injective: injective g
+
+function phi (x: set a): set a 
+  = diff all (map g (diff all (map f x)))
+
+goal phi_monotonic:
+  forall x y. subset x y -> subset (phi x) (phi y)
+
+clone tarski.KnasterTarski with type t = a, function f = phi
+
+constant fixpoint: set a = KnasterTarski.mu
+
+lemma diff_fact:
+  forall s t: set 'a. diff all s == t <-> s == diff all t
+
+lemma phi_corollary:
+  diff all fixpoint = (map g (diff all (map f fixpoint)))
+
+function h (x: a): b
+  = if mem x fixpoint then f x else inverse g x
+
+lemma h_disjointness:
+  forall x. mem x (map f fixpoint) <-> mem (g x) fixpoint
+
+lemma h_coverage:
+  forall x. mem x fixpoint \/ (exists y. g y = x)
+
+lemma h_injects:
+  injective h
+
+lemma h_reverse_1:
+  forall x. inverse h (h x) = x
+
+lemma h_reverse_2:
+  forall x. h (inverse h x) = x
+
+lemma h_surjects:
+  forall y. exists x. h x = y
+
+end
