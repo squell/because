@@ -5,10 +5,6 @@ Require BuiltIn.
 Require HighOrd.
 Require set.Set.
 
-Axiom t : Type.
-Parameter t_WhyType : WhyType t.
-Existing Instance t_WhyType.
-
 Parameter comprehension: forall {a:Type} {a_WT:WhyType a}, (a -> bool) ->
   (set.Set.set a).
 
@@ -41,39 +37,33 @@ Axiom map_def : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   forall (f:(a -> b)) (u:(set.Set.set a)), forall (x:a), (set.Set.mem x u) ->
   (set.Set.mem (f x) (map f u)).
 
-Parameter fc2: (set.Set.set (set.Set.set t)) -> (t -> bool).
+Parameter fc2: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
+  a)) -> (a -> bool).
 
-Axiom fc_def2 : forall (fam:(set.Set.set (set.Set.set t))) (x:t), (((fc2 fam)
-  x) = true) <-> forall (y:(set.Set.set t)), (set.Set.mem y fam) ->
-  (set.Set.mem x y).
+Axiom fc_def2 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
+  (set.Set.set a))) (x:a), (((fc2 fam) x) = true) <-> forall (y:(set.Set.set
+  a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
 (* Why3 assumption *)
-Definition intersect (fam:(set.Set.set (set.Set.set t))): (set.Set.set t) :=
-  (comprehension (fc2 fam)).
+Definition intersect {a:Type} {a_WT:WhyType a} (fam:(set.Set.set (set.Set.set
+  a))): (set.Set.set a) := (comprehension (fc2 fam)).
 
-Parameter f: (set.Set.set t) -> (set.Set.set t).
+Parameter fc3: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
+  a)) -> (a -> bool).
 
-Axiom f_is_monotonic : forall (x:(set.Set.set t)) (y:(set.Set.set t)),
-  (set.Set.subset x y) -> (set.Set.subset (f x) (f y)).
-
-Axiom intersect_common_subset : forall (fam:(set.Set.set (set.Set.set t))),
-  forall (x:(set.Set.set t)), (set.Set.mem x fam) -> (set.Set.subset
-  (intersect fam) x).
+Axiom fc_def3 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
+  (set.Set.set a))) (x:a), (((fc3 fam) x) = true) <-> forall (y:(set.Set.set
+  a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
 (* Why3 goal *)
-Theorem intersect_greatest_common_subset : forall (fam:(set.Set.set
-  (set.Set.set t))) (s:(set.Set.set t)), (forall (x:(set.Set.set t)),
-  (set.Set.mem x fam) -> (set.Set.subset s x)) -> (set.Set.subset s
-  (intersect fam)).
-intros fam s h1.
-unfold set.Set.subset.
-intros.
-unfold intersect.
-rewrite comprehension_def.
-rewrite fc_def2.
-intros.
-apply h1.
-exact H0.
-exact H.
+Theorem intersect_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
+  (set.Set.mem x fam) -> forall (x1:a), (set.Set.mem x1
+  (comprehension (fc3 fam))) -> (set.Set.mem x1 x).
+intros a a_WT fam x h1 x1 h2.
+rewrite comprehension_def in h2.
+rewrite fc_def3 in h2.
+apply h2.
+exact h1.
 Qed.
 

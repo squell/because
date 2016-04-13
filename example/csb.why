@@ -29,16 +29,13 @@ function phi (x: set a): set a
 goal phi_monotonic:
   forall x y. subset x y -> subset (phi x) (phi y)
 
-clone tarski.KnasterTarski with type t = a, function f = phi
+clone tarski.Tarski with type t = a, function f = phi
 
-constant fixpoint: set a = KnasterTarski.mu
+constant fixpoint: set a = Tarski.mu
 
 (* unnecessary, but speeds things up *)
 lemma phi_corollary:
   fixpoint = diff all (map g (diff all (map f fixpoint)))
-
-lemma image_def:
-  forall x. mem x (map g all) -> (exists y. g y = x)
 
 function h (x: a): b
   = if mem x fixpoint then f x else inverse g x
@@ -48,6 +45,9 @@ lemma h_disjointness:
 
 lemma h_coverage:
   forall x. mem x fixpoint \/ mem x (map g all)
+
+lemma image_def:
+  forall x. mem x (map g all) -> (exists y. g y = x)
 
 lemma h_injects:
   injective h

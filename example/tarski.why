@@ -13,6 +13,7 @@ lemma intersect_greatest_common_subset:
   forall fam: set (set 'a),  s: set 'a.
     (forall x: set 'a. mem x fam -> subset s x) -> subset s (intersect fam)
 
+(*
 function union (fam: set (set 'a)): set 'a
   = comprehension (\x. exists y. mem y fam /\ mem x y)
 
@@ -23,10 +24,11 @@ lemma union_common_superset:
 lemma union_least_common_superset:
   forall fam: set (set 'a), s.
     (forall x. mem x fam -> subset x s) -> subset (union fam) s
+*)
 
 end
 
-theory KnasterTarski 
+theory Tarski
 
 type t
 

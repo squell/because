@@ -46,16 +46,28 @@ Axiom map_def1 : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   forall (f:(a -> b)) (u:(set.Set.set a)), forall (x:a), (set.Set.mem x u) ->
   (set.Set.mem (f x) (map f u)).
 
-Parameter intersect: (set.Set.set (set.Set.set t)) -> (set.Set.set t).
+Parameter intersect: forall {a:Type} {a_WT:WhyType a}, (set.Set.set
+  (set.Set.set a)) -> (set.Set.set a).
 
-Parameter fc2: (set.Set.set (set.Set.set t)) -> (t -> bool).
+Parameter fc2: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
+  a)) -> (a -> bool).
 
-Axiom fc_def2 : forall (fam:(set.Set.set (set.Set.set t))) (x:t), (((fc2 fam)
-  x) = true) <-> forall (y:(set.Set.set t)), (set.Set.mem y fam) ->
-  (set.Set.mem x y).
+Axiom fc_def2 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
+  (set.Set.set a))) (x:a), (((fc2 fam) x) = true) <-> forall (y:(set.Set.set
+  a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
-Axiom intersect_def : forall (fam:(set.Set.set (set.Set.set t))),
+Axiom intersect_def : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))),
   ((intersect fam) = (comprehension (fc2 fam))).
+
+Axiom intersect_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
+  (set.Set.mem x fam) -> (set.Set.subset (intersect fam) x).
+
+Axiom intersect_greatest_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))) (s:(set.Set.set a)),
+  (forall (x:(set.Set.set a)), (set.Set.mem x fam) -> (set.Set.subset s
+  x)) -> (set.Set.subset s (intersect fam)).
 
 Parameter f: (set.Set.set t) -> (set.Set.set t).
 
@@ -74,15 +86,6 @@ Axiom prefixpoints_def : (prefixpoints = (comprehension fc3)).
 Parameter mu: (set.Set.set t).
 
 Axiom mu_def : (mu = (intersect prefixpoints)).
-
-Axiom intersect_common_subset : forall (fam:(set.Set.set (set.Set.set t))),
-  forall (x:(set.Set.set t)), (set.Set.mem x fam) -> (set.Set.subset
-  (intersect fam) x).
-
-Axiom intersect_greatest_common_subset : forall (fam:(set.Set.set
-  (set.Set.set t))) (s:(set.Set.set t)), (forall (x:(set.Set.set t)),
-  (set.Set.mem x fam) -> (set.Set.subset s x)) -> (set.Set.subset s
-  (intersect fam)).
 
 Axiom fmu_subset_of_mu : (set.Set.subset (f mu) mu).
 

@@ -41,38 +41,46 @@ Axiom map_def : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   forall (f:(a -> b)) (u:(set.Set.set a)), forall (x:a), (set.Set.mem x u) ->
   (set.Set.mem (f x) (map f u)).
 
-Parameter fc2: (set.Set.set (set.Set.set t)) -> (t -> bool).
+Parameter fc2: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
+  a)) -> (a -> bool).
 
-Axiom fc_def2 : forall (fam:(set.Set.set (set.Set.set t))) (x:t), (((fc2 fam)
-  x) = true) <-> forall (y:(set.Set.set t)), (set.Set.mem y fam) ->
-  (set.Set.mem x y).
+Axiom fc_def2 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
+  (set.Set.set a))) (x:a), (((fc2 fam) x) = true) <-> forall (y:(set.Set.set
+  a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
 (* Why3 assumption *)
-Definition intersect (fam:(set.Set.set (set.Set.set t))): (set.Set.set t) :=
-  (comprehension (fc2 fam)).
+Definition intersect {a:Type} {a_WT:WhyType a} (fam:(set.Set.set (set.Set.set
+  a))): (set.Set.set a) := (comprehension (fc2 fam)).
+
+Axiom intersect_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
+  (set.Set.mem x fam) -> (set.Set.subset (intersect fam) x).
+
+Axiom intersect_greatest_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))) (s:(set.Set.set a)),
+  (forall (x:(set.Set.set a)), (set.Set.mem x fam) -> (set.Set.subset s
+  x)) -> (set.Set.subset s (intersect fam)).
 
 Parameter f: (set.Set.set t) -> (set.Set.set t).
 
 Axiom f_is_monotonic : forall (x:(set.Set.set t)) (y:(set.Set.set t)),
   (set.Set.subset x y) -> (set.Set.subset (f x) (f y)).
 
-Axiom intersect_common_subset : forall (fam:(set.Set.set (set.Set.set t))),
-  forall (x:(set.Set.set t)), (set.Set.mem x fam) -> (set.Set.subset
-  (intersect fam) x).
+Parameter fc3: ((set.Set.set t) -> bool).
+
+Parameter fc4: ((set.Set.set t) -> bool).
+
+Axiom fc_def3 : forall (x:(set.Set.set t)), ((fc3 x) = true) <->
+  (set.Set.subset (f x) x).
+
+Axiom fc_def4 : forall (x:(set.Set.set t)), ((fc4 x) = true) <->
+  (set.Set.subset (f x) x).
 
 (* Why3 goal *)
-Theorem intersect_greatest_common_subset : forall (fam:(set.Set.set
-  (set.Set.set t))) (s:(set.Set.set t)), (forall (x:(set.Set.set t)),
-  (set.Set.mem x fam) -> (set.Set.subset s x)) -> (set.Set.subset s
-  (intersect fam)).
-intros fam s h1.
-intro; intro.
-unfold intersect.
-rewrite comprehension_def.
-rewrite fc_def2.
-intros.
-apply h1.
-exact H0.
-exact H.
+Theorem fmu_subset_of_mu : forall (x:t), (set.Set.mem x
+  (f (intersect (comprehension fc3)))) -> (set.Set.mem x
+  (intersect (comprehension fc4))).
+intros x h1.
+
 Qed.
 
