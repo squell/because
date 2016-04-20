@@ -5,10 +5,6 @@ Require BuiltIn.
 Require HighOrd.
 Require set.Set.
 
-Axiom t : Type.
-Parameter t_WhyType : WhyType t.
-Existing Instance t_WhyType.
-
 Parameter comprehension: forall {a:Type} {a_WT:WhyType a}, (a -> bool) ->
   (set.Set.set a).
 
@@ -49,46 +45,20 @@ Axiom fc_def2 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
   a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
 (* Why3 assumption *)
-Definition intersect {a:Type} {a_WT:WhyType a} (fam:(set.Set.set (set.Set.set
-  a))): (set.Set.set a) := (comprehension (fc2 fam)).
-
-Axiom intersect_common_subset : forall {a:Type} {a_WT:WhyType a},
-  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
-  (set.Set.mem x fam) -> (set.Set.subset (intersect fam) x).
-
-Axiom intersect_greatest_common_subset : forall {a:Type} {a_WT:WhyType a},
-  forall (fam:(set.Set.set (set.Set.set a))) (s:(set.Set.set a)),
-  (forall (x:(set.Set.set a)), (set.Set.mem x fam) -> (set.Set.subset s
-  x)) -> (set.Set.subset s (intersect fam)).
-
-Parameter f: (set.Set.set t) -> (set.Set.set t).
-
-Axiom f_is_monotonic : forall (x:(set.Set.set t)) (y:(set.Set.set t)),
-  (set.Set.subset x y) -> (set.Set.subset (f x) (f y)).
-
-Parameter fc3: ((set.Set.set t) -> bool).
-
-Parameter fc4: ((set.Set.set t) -> bool).
-
-Axiom fc_def3 : forall (x:(set.Set.set t)), ((fc3 x) = true) <->
-  (set.Set.subset (f x) x).
-
-Axiom fc_def4 : forall (x:(set.Set.set t)), ((fc4 x) = true) <->
-  (set.Set.subset (f x) x).
+Definition intersection {a:Type} {a_WT:WhyType a} (fam:(set.Set.set
+  (set.Set.set a))): (set.Set.set a) := (comprehension (fc2 fam)).
 
 (* Why3 goal *)
-Theorem fmu_subset_of_mu : (set.Set.subset
-  (f (intersect (comprehension fc3))) (intersect (comprehension fc4))).
-apply intersect_greatest_common_subset.
+Theorem intersection_common_subset : forall {a:Type} {a_WT:WhyType a},
+  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
+  (set.Set.mem x fam) -> (set.Set.subset (intersection fam) x).
+intros a a_WT fam x h1.
+intro.
 intros.
-apply set.Set.subset_trans with (f x).
-apply f_is_monotonic.
-apply intersect_common_subset.
-rewrite comprehension_def.
-rewrite fc_def3.
+unfold intersection in H.
 rewrite comprehension_def in H.
-rewrite fc_def4 in H.
-exact H.
-exact H.
+rewrite fc_def2 in H.
+apply H.
+exact h1.
 Qed.
 

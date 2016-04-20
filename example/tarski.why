@@ -2,16 +2,16 @@ theory Collection
 
 use import set.SetComprehension
 
-function intersect (fam: set (set 'a)): set 'a
+function intersection (fam: set (set 'a)): set 'a
   = comprehension (\x: 'a. forall y:set 'a. mem y fam -> mem x y)
 
-lemma intersect_common_subset:
+lemma intersection_common_subset:
   forall fam: set (set 'a).
-    forall x: set 'a. mem x fam -> subset (intersect fam) x
+    forall x: set 'a. mem x fam -> subset (intersection fam) x
 
-lemma intersect_greatest_common_subset:
+lemma intersection_greatest_common_subset:
   forall fam: set (set 'a),  s: set 'a.
-    (forall x: set 'a. mem x fam -> subset s x) -> subset s (intersect fam)
+    (forall x: set 'a. mem x fam -> subset s x) -> subset s (intersection fam)
 
 (*
 function union (fam: set (set 'a)): set 'a
@@ -43,16 +43,16 @@ axiom f_is_monotonic:
 constant prefixpoints: set (set t) = 
   comprehension (\x: set t. subset (f x) x)
 
-constant mu: set t = intersect prefixpoints
+constant mu: set t = intersection prefixpoints
 
 lemma fmu_subset_of_mu:
   subset (f mu) mu
 
-lemma mu_subset_of_fmu:
-  subset mu (f mu)
+lemma fmu_equiv_of_mu:
+  f mu == mu
 
 lemma mu_is_fixpoint:
-  f mu == mu
+  f mu = mu
 
 goal fixpoint: exists x:set t. f x = x
 

@@ -15,9 +15,6 @@ Parameter comprehension: forall {a:Type} {a_WT:WhyType a}, (a -> bool) ->
 Axiom comprehension_def : forall {a:Type} {a_WT:WhyType a}, forall (p:(a ->
   bool)), forall (x:a), (set.Set.mem x (comprehension p)) <-> ((p x) = true).
 
-Parameter filter: forall {a:Type} {a_WT:WhyType a}, (a -> bool) ->
-  (set.Set.set a) -> (set.Set.set a).
-
 Parameter fc: forall {a:Type} {a_WT:WhyType a}, (a -> bool) -> (set.Set.set
   a) -> (a -> bool).
 
@@ -25,11 +22,9 @@ Axiom fc_def : forall {a:Type} {a_WT:WhyType a}, forall (p:(a -> bool))
   (u:(set.Set.set a)) (x:a), (((fc p u) x) = true) <-> (((p x) = true) /\
   (set.Set.mem x u)).
 
-Axiom filter_def : forall {a:Type} {a_WT:WhyType a}, forall (p:(a -> bool))
-  (u:(set.Set.set a)), ((filter p u) = (comprehension (fc p u))).
-
-Parameter map: forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
-  (a -> b) -> (set.Set.set a) -> (set.Set.set b).
+(* Why3 assumption *)
+Definition filter {a:Type} {a_WT:WhyType a} (p:(a -> bool)) (u:(set.Set.set
+  a)): (set.Set.set a) := (comprehension (fc p u)).
 
 Parameter fc1: forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   (a -> b) -> (set.Set.set a) -> (b -> bool).
@@ -38,16 +33,13 @@ Axiom fc_def1 : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   forall (f:(a -> b)) (u:(set.Set.set a)) (y:b), (((fc1 f u) y) = true) <->
   exists x:a, (set.Set.mem x u) /\ (y = (f x)).
 
-Axiom map_def : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
-  forall (f:(a -> b)) (u:(set.Set.set a)), ((map f u) = (comprehension (fc1 f
-  u))).
+(* Why3 assumption *)
+Definition map {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b} (f:(a ->
+  b)) (u:(set.Set.set a)): (set.Set.set b) := (comprehension (fc1 f u)).
 
-Axiom map_def1 : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
+Axiom map_def : forall {a:Type} {a_WT:WhyType a} {b:Type} {b_WT:WhyType b},
   forall (f:(a -> b)) (u:(set.Set.set a)), forall (x:a), (set.Set.mem x u) ->
   (set.Set.mem (f x) (map f u)).
-
-Parameter intersect: forall {a:Type} {a_WT:WhyType a}, (set.Set.set
-  (set.Set.set a)) -> (set.Set.set a).
 
 Parameter fc2: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
   a)) -> (a -> bool).
@@ -56,72 +48,46 @@ Axiom fc_def2 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
   (set.Set.set a))) (x:a), (((fc2 fam) x) = true) <-> forall (y:(set.Set.set
   a)), (set.Set.mem y fam) -> (set.Set.mem x y).
 
-Axiom intersect_def : forall {a:Type} {a_WT:WhyType a},
-  forall (fam:(set.Set.set (set.Set.set a))),
-  ((intersect fam) = (comprehension (fc2 fam))).
+(* Why3 assumption *)
+Definition intersection {a:Type} {a_WT:WhyType a} (fam:(set.Set.set
+  (set.Set.set a))): (set.Set.set a) := (comprehension (fc2 fam)).
 
-Axiom intersect_common_subset : forall {a:Type} {a_WT:WhyType a},
+Axiom intersection_common_subset : forall {a:Type} {a_WT:WhyType a},
   forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
-  (set.Set.mem x fam) -> (set.Set.subset (intersect fam) x).
+  (set.Set.mem x fam) -> (set.Set.subset (intersection fam) x).
 
-Axiom intersect_greatest_common_subset : forall {a:Type} {a_WT:WhyType a},
+Axiom intersection_greatest_common_subset : forall {a:Type} {a_WT:WhyType a},
   forall (fam:(set.Set.set (set.Set.set a))) (s:(set.Set.set a)),
   (forall (x:(set.Set.set a)), (set.Set.mem x fam) -> (set.Set.subset s
-  x)) -> (set.Set.subset s (intersect fam)).
-
-Parameter union: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
-  a)) -> (set.Set.set a).
-
-Parameter fc3: forall {a:Type} {a_WT:WhyType a}, (set.Set.set (set.Set.set
-  a)) -> (a -> bool).
-
-Axiom fc_def3 : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
-  (set.Set.set a))) (x:a), (((fc3 fam) x) = true) <-> exists y:(set.Set.set
-  a), (set.Set.mem y fam) /\ (set.Set.mem x y).
-
-Axiom union_def : forall {a:Type} {a_WT:WhyType a}, forall (fam:(set.Set.set
-  (set.Set.set a))), ((union fam) = (comprehension (fc3 fam))).
-
-Axiom union_common_superset : forall {a:Type} {a_WT:WhyType a},
-  forall (fam:(set.Set.set (set.Set.set a))), forall (x:(set.Set.set a)),
-  (set.Set.mem x fam) -> (set.Set.subset x (union fam)).
-
-Axiom union_least_common_superset : forall {a:Type} {a_WT:WhyType a},
-  forall (fam:(set.Set.set (set.Set.set a))) (s:(set.Set.set a)),
-  (forall (x:(set.Set.set a)), (set.Set.mem x fam) -> (set.Set.subset x
-  s)) -> (set.Set.subset (union fam) s).
+  x)) -> (set.Set.subset s (intersection fam)).
 
 Parameter f: (set.Set.set t) -> (set.Set.set t).
 
 Axiom f_is_monotonic : forall (x:(set.Set.set t)) (y:(set.Set.set t)),
   (set.Set.subset x y) -> (set.Set.subset (f x) (f y)).
 
-Parameter prefixpoints: (set.Set.set (set.Set.set t)).
+Parameter fc3: ((set.Set.set t) -> bool).
 
 Parameter fc4: ((set.Set.set t) -> bool).
+
+Axiom fc_def3 : forall (x:(set.Set.set t)), ((fc3 x) = true) <->
+  (set.Set.subset (f x) x).
 
 Axiom fc_def4 : forall (x:(set.Set.set t)), ((fc4 x) = true) <->
   (set.Set.subset (f x) x).
 
-Axiom prefixpoints_def : (prefixpoints = (comprehension fc4)).
-
-Parameter mu: (set.Set.set t).
-
-Axiom mu_def : (mu = (intersect prefixpoints)).
-
 (* Why3 goal *)
-Theorem fmu_subset_of_mu : (set.Set.subset (f mu) mu).
-rewrite mu_def.
-apply intersect_greatest_common_subset.
-rewrite prefixpoints_def.
+Theorem fmu_subset_of_mu : (set.Set.subset
+  (f (intersection (comprehension fc3))) (intersection (comprehension fc4))).
+apply intersection_greatest_common_subset.
 intros.
 rewrite comprehension_def in H.
 rewrite fc_def4 in H.
 apply set.Set.subset_trans with (f x).
 apply f_is_monotonic.
-apply intersect_common_subset.
+apply intersection_common_subset.
 rewrite comprehension_def.
-rewrite fc_def4.
+rewrite fc_def3.
 exact H.
 exact H.
 Qed.
