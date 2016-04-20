@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="4">
+<prover id="0" name="CVC3" version="2.4.1" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="2" name="Z3" version="4.3.1" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="3" name="Eprover" version="1.8-001" timelimit="13" steplimit="1" memlimit="1000"/>
+<prover id="4" name="Alt-Ergo" version="0.95.2" timelimit="13" steplimit="1" memlimit="1000"/>
+<file name="../mult_inverse.mlw">
+<theory name="Inverse_Mult" sum="49a15d64a9f1e9b353765a570de3c95b">
+ <goal name="mod_cut_law">
+ <proof prover="2"><result status="valid" time="4.48"/></proof>
+ <proof prover="3"><result status="valid" time="0.35"/></proof>
+ </goal>
+ <goal name="WP_parameter mult_inverse" expl="VC for mult_inverse">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter mult_inverse.1" expl="1. postcondition">
+  <proof prover="4"><result status="valid" time="0.04" steps="7"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.2" expl="2. loop invariant init">
+  <proof prover="3"><result status="valid" time="3.31"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.3" expl="3. loop invariant init">
+  <proof prover="3"><result status="valid" time="0.33"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.4" expl="4. loop invariant init">
+  <proof prover="3"><result status="valid" time="0.16"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.5" expl="5. loop invariant init">
+  <proof prover="0"><result status="valid" time="0.13"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.6" expl="6. loop invariant init">
+  <proof prover="0"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.7" expl="7. loop invariant init">
+  <proof prover="0"><result status="valid" time="0.07"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.8" expl="8. assertion">
+  <proof prover="0"><result status="valid" time="0.20"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.9" expl="9. assertion">
+  <transf name="split_goal_wp">
+   <goal name="WP_parameter mult_inverse.9.1" expl="1. assertion">
+   <proof prover="3"><result status="valid" time="0.17"/></proof>
+   </goal>
+  </transf>
+  </goal>
+  <goal name="WP_parameter mult_inverse.10" expl="10. assertion">
+  <proof prover="3"><result status="valid" time="0.36"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.11" expl="11. assertion">
+  <proof prover="0"><result status="valid" time="1.18"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.12" expl="12. postcondition">
+  <proof prover="2" timelimit="60"><result status="valid" time="9.74"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.13" expl="13. assertion">
+  <proof prover="3" timelimit="60"><result status="valid" time="35.80"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.14" expl="14. loop invariant preservation">
+  <transf name="split_goal_wp">
+   <goal name="WP_parameter mult_inverse.14.1" expl="1. VC for mult_inverse">
+   <proof prover="0"><result status="valid" time="0.43"/></proof>
+   </goal>
+   <goal name="WP_parameter mult_inverse.14.2" expl="2. VC for mult_inverse">
+   <proof prover="3"><result status="valid" time="0.19"/></proof>
+   </goal>
+  </transf>
+  </goal>
+  <goal name="WP_parameter mult_inverse.15" expl="15. loop invariant preservation">
+  <proof prover="3"><result status="valid" time="0.06"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.16" expl="16. loop invariant preservation">
+  <proof prover="3"><result status="valid" time="0.13"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.17" expl="17. loop invariant preservation">
+  <proof prover="0"><result status="valid" time="0.47"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.18" expl="18. loop invariant preservation">
+  <proof prover="0"><result status="valid" time="0.30"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.19" expl="19. loop invariant preservation">
+  <proof prover="3" timelimit="60"><result status="valid" time="0.05"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.20" expl="20. loop variant decrease">
+  <transf name="split_goal_wp">
+   <goal name="WP_parameter mult_inverse.20.1" expl="1. VC for mult_inverse">
+   <proof prover="3"><result status="valid" time="0.07"/></proof>
+   </goal>
+   <goal name="WP_parameter mult_inverse.20.2" expl="2. VC for mult_inverse">
+   <proof prover="3"><result status="valid" time="0.29"/></proof>
+   </goal>
+  </transf>
+  </goal>
+  <goal name="WP_parameter mult_inverse.21" expl="21. assertion">
+  <proof prover="2"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.22" expl="22. assertion">
+  <proof prover="3" timelimit="60"><result status="valid" time="27.93"/></proof>
+  </goal>
+  <goal name="WP_parameter mult_inverse.23" expl="23. postcondition">
+  <proof prover="4"><result status="valid" time="0.18" steps="18"/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+</file>
+</why3session>
