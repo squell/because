@@ -33,7 +33,7 @@ module TinySort
        tinysort a (pos+1);
        if a[pos] > a[pos+1] then (
          swap a pos (pos+1);
-         assert { forall j: int. pos < j < length a -> a[pos] <= a[j] };
+         assert { forall j: int. pos < j < length a -> a[pos] <= a[j] }; (* not necessary, but speeds up verification *)
          tinysort a (pos+1)
        )
     )
@@ -60,6 +60,27 @@ module TinySort
          iter -= 1
        done
     )
+
+  exception Break unit
+
+  let rec tinysort_b (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  ensures { forall i j: int. pos <= i <= j < length a -> a[i] <= a[j] }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+  = 'Start:
+    try
+    if length a > pos+1 then (
+       while true do
+         invariant { permut_sub (at a 'Start) a pos (length a) }
+         tinysort a (pos+1);
+         if a[pos] <= a[pos+1] then raise (Break ());
+         swap a pos (pos+1);
+       done
+    )
+    with Break _ ->
+      ()
+    end
 
   let sort (a: array int): unit
   ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
