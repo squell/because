@@ -4,7 +4,7 @@ module PermutFacts
   use import array.ArrayPermut
 
   lemma permut_trans:
-    forall a b c: array int, l u: int. 
+    forall a b c: array int, l u: int.
       permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
 
   lemma permut_strength:
@@ -20,21 +20,21 @@ module SelectSort
   use import array.ArrayPermut
 
   let min_index (a: array int) (first limit: int): int
-  requires { 0 <= first < limit <=length a } 
-  ensures { first <= result < limit } 
+  requires { 0 <= first < limit <=length a }
+  ensures { first <= result < limit }
   ensures { forall j:int. first <= j < limit -> a[result] <= a[j] }
   = let min = ref first in
       for i = first+1 to limit-1 do
         invariant { first <= !min < limit }
         invariant { forall j:int. first <= j < i -> a[!min] <= a[j] }
-	if a[i] < a[!min] then min := i 
+	if a[i] < a[!min] then min := i
       done;
       !min
 
   let sort (a: array int): unit
   ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
   ensures { permut_all (old a) a }
-  = 'Start: 
+  = 'Start:
     for i = 0 to length a-1 do
       invariant { forall n m: int. 0 <= n < i <= m < length a -> a[n] <= a[m] }
       invariant { forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
@@ -73,6 +73,92 @@ module InsertSort
 
 end
 
+module BinInsertSort
+  use import int.Int
+  use import int.ComputerDivision
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+
+  let rec binsearch_r (e: int) (a: array int) (i j: int): int
+  requires { 0 <= i <= j <= length a }
+  requires { forall n m: int. 0 <= n <= m < length a -> a[n] <= a[m] }
+  requires { forall n: int. 0 <= n < i -> a[n] < e }
+  requires { forall n: int. j <= n < length a -> e <= a[n] }
+  ensures { forall n: int. 0 <= n < result -> a[n] < e }
+  ensures { forall n: int. result <= n < length a -> e <= a[n] }
+  ensures { i <= result <= j }
+  variant { j - i }
+  = let m = i + div (j - i) 2 in
+    if i = j then i else
+    if a[m] <  e then
+      binsearch_r e a (m+1) j
+    else
+      binsearch_r e a i m
+
+  let binsearch_w (e: int) (a: array int) (size: int): int
+  requires { 0 <= size <= length a }
+  requires { forall n m: int. 0 <= n <= m < size -> a[n] <= a[m] }
+  ensures { forall n: int. 0 <= n < result -> a[n] < e }
+  ensures { forall n: int. result <= n < size -> e <= a[n] }
+  ensures { 0 <= result <= size }
+  = let i = ref 0 in
+    let j = ref size in
+    while !i < !j do
+      variant { !j - !i }
+      invariant { 0 <= !i <= !j <= size }
+      invariant { forall n: int. 0 <= n < !i -> a[n] < e }
+      invariant { forall n: int. !j <= n < size -> e <= a[n] }
+      let m = div (!i + !j) 2 in
+      if a[m] < e then
+        i := m+1
+      else
+        j := m
+    done;
+    !i
+
+  (* spot the subtle difference *)
+  let binsearch (e: int) (a: array int) (size: int): int
+  requires { 0 <= size <= length a }
+  requires { forall n m: int. 0 <= n <= m < size -> a[n] <= a[m] }
+  ensures { forall n: int. 0 <= n < result -> a[n] <= e }
+  ensures { forall n: int. result <= n < size -> e < a[n] }
+  ensures { 0 <= result <= size }
+  = let i = ref 0 in
+    let j = ref size in
+    while !i < !j do
+      variant { !j - !i }
+      invariant { 0 <= !i <= !j <= size }
+      invariant { forall n: int. 0 <= n < !i -> a[n] <= e }
+      invariant { forall n: int. !j <= n < size -> e < a[n] }
+      let m = div (!i + !j) 2 in
+      if a[m] <= e then
+        i := m+1
+      else
+        j := m
+    done;
+    !i
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = 'Start:
+    for i = 1 to length a-1 do
+      invariant { forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      let p = binsearch a[i] a i in
+      for j = i downto (p+1) do
+        invariant { permut_all (at a 'Start) a }
+        invariant { forall n m: int. 0 <= n < m <= i -> m <> j -> a[n] <= a[m] }
+        invariant { forall n: int. 0 <= n <  p -> a[n] <= a[j] }
+        invariant { forall m: int. p <= m <= i -> a[j] <= a[m] }
+        swap a j (j-1)
+      done
+    done
+
+end
+
 module BubbleSort
   use import int.Int
   use import ref.Ref
@@ -99,7 +185,7 @@ module BubbleSort
         invariant { forall n: int. 0 <= n < i-1 -> a[n] <= a[i-1] }
         invariant { (not !swapped) -> forall n m: int. 0 <= n <= m < i -> a[n] <= a[m] }
         invariant { permut_all (at a 'Start) a }
-        if a[i-1] > a[i] then 
+        if a[i-1] > a[i] then
           (swap a (i-1) i;
            swapped := true);
       done;
@@ -119,12 +205,12 @@ module ArrayHeap
     forall i: int. start <= parent i /\ i < size -> a[i] <= a[parent i]
 
   predicate almostheap (a: array int) (start: int) (size:int) (mid: int) =
-    (forall i: int. start <= parent i /\ i < size /\ parent i <> mid -> a[i] <= a[parent i]) 
+    (forall i: int. start <= parent i /\ i < size /\ parent i <> mid -> a[i] <= a[parent i])
    /\
     (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
 
   predicate nearlyheap (a: array int) (start: int) (size:int) (mid: int) =
-    (forall i: int. start <= parent i /\ i < size /\ i <> mid -> a[i] <= a[parent i]) 
+    (forall i: int. start <= parent i /\ i < size /\ i <> mid -> a[i] <= a[parent i])
    /\
     (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
 
@@ -144,7 +230,7 @@ module ArrayHeap
 
   let rec lemma descendant_order (a: array int) (pos: int) (size: int) (i: int): unit
   variant { i }
-  requires { 0 <= pos <= i < size <= length a } 
+  requires { 0 <= pos <= i < size <= length a }
   requires { heap a pos size }
   requires { descendant pos i }
   ensures { a[pos] >= a[i] }
@@ -203,7 +289,7 @@ module HeapSort
       if a[!cur] < a[!child] then
         (swap a !cur !child;
          assert { heap a pos (!cur+1) };
-         assert { heap a pos (!cur*2+2) }; 
+         assert { heap a pos (!cur*2+2) };
          cur := !child;
          child := !cur*2+1)
       else
@@ -226,7 +312,7 @@ module HeapSort
       cur := parent !cur
     done
 
-  let makeheap (a: array int): unit 
+  let makeheap (a: array int): unit
   ensures { heap a 0 (length a) }
   ensures { permut_all (old a) a }
   = 'Start:
@@ -236,7 +322,7 @@ module HeapSort
       pushdown a i (length a)
     done
 
-  let makeheap_up (a: array int): unit 
+  let makeheap_up (a: array int): unit
   ensures { heap a 0 (length a) }
   ensures { permut_all (old a) a }
   = 'Start:
@@ -296,19 +382,19 @@ module QuickSort
       invariant { !p <= !q -> exists i: int. !p <= i < limit /\ a[i] >= pivot }
       invariant { !p > !q -> first < !p /\ !q+1 < limit }
       'Entry:
-      while a[!p] < pivot do 
+      while a[!p] < pivot do
         variant { limit - !p }
         invariant { exists i: int. first <= !p <= i < limit /\ a[i] >= pivot }
         invariant { forall i: int. first <= i < !p -> a[i] <= pivot }
         invariant { !p >= at !p 'Entry }
-        p := !p+1 
+        p := !p+1
       done;
-      while a[!q] > pivot do 
+      while a[!q] > pivot do
         variant { !q }
         invariant { exists i: int. first <= i <= !q < limit /\ a[i] <= pivot }
         invariant { forall i: int. !q < i < limit -> a[i] >= pivot }
         invariant { !q <= at !q 'Entry }
-        q := !q-1 
+        q := !q-1
       done;
       if !p <= !q then (
         'Swap: swap a !p !q;
