@@ -1,0 +1,297 @@
+module Counter
+
+  use import int.Int
+  use import int.Abs
+  use export ref.Refint
+
+  val ghost count: ref int
+
+  let event (effect: 'a): 'a
+  writes { count }
+  ensures { !count = old !count + 1 }
+  ensures { result = effect }
+  = count +=1; effect
+
+end
+
+module PermutFacts
+  use import int.Int
+  use import array.Array
+  use import array.ArrayPermut
+  use import array.NumOf
+
+  lemma permut_trans:
+    forall a b c: array int, l u: int. 
+      permut_sub a b l u -> permut_sub b c l u -> permut_sub a c l u
+
+  lemma permut_exch_trans:
+    forall a b c d: array int, l u i j: int.
+      l <= i < u /\ l <= j < u /\
+      permut_sub a b l u /\ exchange b c i j -> permut_sub c d l u -> permut_sub a d l u
+
+end
+
+module TinySort
+  use import int.Int
+  use import int.EuclideanDivision
+  use import ref.Ref
+  use import ref.Refint
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+  use import array.IntArraySorted
+  use import PermutFacts
+  clone Counter as C
+  clone Counter as S
+
+  let rec tinysort (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  ensures { sorted_sub a pos (length a) }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+
+  ensures { pos+1 >= length a -> !S.count = old !S.count }
+  ensures { pos+1 < length a ->                               sorted_sub (old a) pos (length a) -> !S.count = old !S.count }
+  ensures { pos+1 < length a -> let n = length a - pos - 1 in sorted_sub (old a) (pos+1) (length a) -> !S.count <= old !S.count + n }
+  ensures { pos+1 < length a -> let n = length a - pos - 1 in !S.count <= old !S.count + div ((n+1)*n) 2  }
+
+  ensures { pos+1 >= length a -> !C.count = old !C.count }
+  ensures { pos+1 < length a -> let n = length a - pos - 1 in sorted_sub (old a) pos (length a) -> !C.count = old !C.count + n }
+  ensures { pos+1 < length a -> let n = length a - pos - 1 in sorted_sub (old a) (pos+1) (length a) -> !C.count <= old !C.count + div ((n+1)*n) 2 }
+  ensures { pos+1 < length a -> let n = length a - pos - 1 in !C.count <= old !C.count + div (n*n*n + 5*n) 6 }
+  = 'Start:
+    if length a > pos+1 then (
+       tinysort a (pos+1);
+       if C.event (a[pos] > a[pos+1]) then (
+         S.event (swap a pos (pos+1));
+(*
+         assert { forall j: int. pos < j < length a -> a[pos] <= a[j] }; (* speed up *)
+*)
+         assert { sorted_sub a (pos+2) (length a) };
+         tinysort a (pos+1);
+(*
+         assert { pos+2 < length a -> let n = length a - pos - 1 in !S.count <= at !S.count 'Start + div ((n+1)*n) 2 }; (* speed up *)
+         assert { pos+2 < length a -> let n = length a - pos - 1 in !C.count <= at !C.count 'Start + div (n*n*n + 5*n) 6 };
+*)
+       )
+    )
+
+  let rec tinysort_b (a: array int) (pos: int): unit
+  requires { 0 <= pos <= length a }
+  ensures { sorted_sub a pos (length a) }
+  variant { length a - pos }
+  ensures { permut_sub (old a) a pos (length a) }
+
+  ensures { pos+1 >= length a -> !S.count = old !S.count }
+  ensures { pos+1 < length a ->                           sorted_sub (old a) pos (length a) -> !S.count = old !S.count }
+  ensures { pos+1 < length a -> let n = length a - pos in sorted_sub (old a) (pos+1) (length a) -> !S.count - old !S.count <= n }
+  ensures { pos+1 < length a -> let n = length a - pos in !S.count - old !S.count <= n*n  }
+
+  ensures { pos+1 >= length a -> !C.count = old !C.count }
+  ensures { pos+1 < length a -> let n = length a - pos in sorted_sub (old a) pos (length a) -> !C.count - old !C.count <= n }
+  ensures { pos+1 < length a -> let n = length a - pos in sorted_sub (old a) (pos+1) (length a) -> !C.count - old !C.count <= n*n }
+  ensures { pos+1 < length a -> let n = length a - pos in !C.count - old !C.count <= n*n*n }
+  = 'Start:
+    if length a > pos+1 then (
+       tinysort_b a (pos+1);
+       if C.event (a[pos] > a[pos+1]) then (
+         S.event (swap a pos (pos+1));
+         assert { forall j: int. pos < j < length a -> a[pos] <= a[j] }; (* speed up *)
+         assert { sorted_sub a (pos+2) (length a) };
+         tinysort_b a (pos+1);
+       )
+    )
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  = tinysort a 0
+
+end 
+
+
+module ArrayHeap
+  use import int.Int
+  use import int.ComputerDivision
+  use import array.Array
+
+  function parent (pos: int): int = div (pos-1) 2
+
+  predicate heap (a: array int) (start: int) (size: int) =
+    forall i: int. start <= parent i /\ i < size -> a[i] <= a[parent i]
+
+  predicate almostheap (a: array int) (start: int) (size:int) (mid: int) =
+    (forall i: int. start <= parent i /\ i < size /\ parent i <> mid -> a[i] <= a[parent i]) 
+   /\
+    (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
+
+  predicate nearlyheap (a: array int) (start: int) (size:int) (mid: int) =
+    (forall i: int. start <= parent i /\ i < size /\ i <> mid -> a[i] <= a[parent i]) 
+   /\
+    (forall i: int. start <= parent mid < parent i = mid /\ i < size -> a[i] <= a[parent mid])
+
+  (* makes verification faster *)
+  lemma heap_parent_nonneg:
+    forall p: int. 0 <= p -> 0 <= parent p <= p
+
+  inductive descendant int int =
+  | Refl: forall n: int. descendant n n
+  | Step: forall p q: int. p <= q /\ descendant p (parent q) -> descendant p q
+
+  let rec lemma descendant_root0 (pos: int): unit
+  variant { pos }
+  requires { 0 <= pos }
+  ensures { descendant 0 pos }
+  = if pos > 0 then descendant_root0 (parent pos)
+
+  let rec lemma descendant_order (a: array int) (pos: int) (size: int) (i: int): unit
+  variant { i }
+  requires { 0 <= pos <= i < size <= length a } 
+  requires { heap a pos size }
+  requires { descendant pos i }
+  ensures { a[pos] >= a[i] }
+  = if i > pos then descendant_order a pos size (parent i)
+
+  lemma heap_top:
+    forall a: array int, n: int. 0 <= n <= length a /\ heap a 0 n -> forall m: int. 0 <= m < n -> a[0] >= a[m]
+
+end
+
+module Logarithm
+ 
+  use import int.Int
+  use import int.Power
+  use import set.SetComprehension
+  use import ref.Ref
+  use import ref.Refint
+
+  function log_candidates (base x: int): set int 
+    = comprehension (\e. e >= 0 /\ power base e <= x < power base (e+1))
+
+  lemma log_uniqueness:  (* not necessary for cvc4 *)
+    forall base x. base > 1 -> x > 0 -> 
+      forall a b. mem a (log_candidates base x) -> mem b (log_candidates base x) -> a = b
+  
+  function log (base x: int): int
+    = choose (log_candidates base x)
+
+  let log (base x: int): int
+  requires { base > 1 }
+  requires { x > 0 }
+  ensures { 0 <= result }
+  ensures { power base result <= x < power base (result+1) }
+  ensures { result = log base x }
+    = let n = ref 1 in
+      while power base !n <= x do
+        variant { x - power base !n }
+        invariant { 1 <= !n }
+        invariant { power base (!n-1) <= x }
+        assert { power base !n > 0 };
+        n += 1
+      done;
+      assert { mem (!n-1) (log_candidates base x) };
+      !n-1
+
+  let lemma log_is_well_defined (base x: int): unit
+  requires { base > 1 }
+  requires { x > 0 }
+  ensures { mem (log base x) (log_candidates base x) }
+    = log base x; ()
+
+  lemma log_positive:
+    forall base x. base > 1 -> x > 0 -> log base x >= 0
+
+  lemma log_power_relation:
+    forall base x. base > 1 -> x > 0 -> power base (log base x) <= x < power base (log base x+1)
+
+  lemma power_inverse:
+    forall base x. base > 1 -> x > 0 -> forall y. y >= 0 -> x = power base y -> log base x = y
+
+  lemma log_power_inverse:
+    forall base x. base > 1 -> x >= 0 -> log base (power base x) = x
+
+  function log2 (x: int): int = log 2 x
+
+end
+
+module HeapSort
+  use import int.Int
+  use import int.ComputerDivision
+  use import ref.Ref
+  use import array.Array
+  use import array.ArraySwap
+  use import array.ArrayPermut
+  use import ArrayHeap
+  use import PermutFacts
+  use import int.Power
+
+  use import Logarithm
+
+  clone Counter as S
+  clone Counter as C
+
+  let pushdown (a: array int) (pos: int) (size: int): unit
+  requires { 0 <= pos < size <= length a }
+  requires { almostheap a pos size pos }
+  ensures  { heap a pos size }
+  ensures  { permut_sub (old a) a pos size }
+  ensures  { !S.count - old !S.count <= log2 size }
+  = 'Start:
+    let child = ref (2*pos+1) in
+    let cur = ref pos in
+    while !child < size do
+      variant { size - !child }
+      invariant { pos <= !cur }
+      invariant { !child < size -> !child = !cur*2+1 }
+      invariant { almostheap a pos size !cur }
+      invariant { !child >= size -> heap a pos size }
+      invariant { permut_sub (at a 'Start) a pos size }
+
+      invariant { !S.count >= at !S.count 'Start }
+      invariant { power 2 (!S.count - at !S.count 'Start) <= !cur+1 <= size }
+
+      if !child+1 < size && C.event(a[!child] < a[!child+1]) then
+        child := !child+1;
+      if C.event (a[!cur] < a[!child]) then
+        (S.event (swap a !cur !child);
+         assert { heap a pos (!cur+1) };
+         assert { heap a pos (!cur*2+2) }; 
+         cur := !child;
+         child := !cur*2+1)
+      else
+         child := size
+    done
+
+  let makeheap (a: array int): unit 
+  ensures { heap a 0 (length a) }
+  ensures { permut_all (old a) a }
+  ensures { let n = length a in !S.count - old !S.count <= n * log2 n }
+  = 'Start:
+    for i = div (length a) 2-1 downto 0 do
+      invariant { heap a (i+1) (length a) }
+      invariant { permut_all (at a 'Start) a }
+      invariant { let n = length a in !S.count - at !S.count 'Start <= (n - i - 1) * log2 n }
+      pushdown a i (length a)
+    done
+
+  let sort (a: array int): unit
+  ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
+  ensures { permut_all (old a) a }
+  ensures { let n = length a in !S.count - old !S.count <= 2*n*(log2 n+1) }
+  = 'Start:
+    makeheap a;
+    'Loop:
+    for i = length a-1 downto 1 do
+      invariant { heap a 0 (i+1) }
+      invariant { forall n m: int. i < n <= m < length a -> a[n] <= a[m] }
+      invariant { forall n m: int. 0 <= n <= i < m < length a -> a[n] <= a[m] }
+      invariant { permut_all (at a 'Start) a }
+      invariant { let n = length a in !S.count - at !S.count 'Loop <= (n - i - 1) * (log2 n + 1) }
+      S.event (swap a 0 i);
+      assert { forall n m: int. i < n <= m < length a -> a[n] <= a[m] };
+      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
+      pushdown a 0 i;
+      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
+    done
+
+end
