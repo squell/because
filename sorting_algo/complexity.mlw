@@ -236,6 +236,7 @@ module HeapSort
   ensures  { heap a pos size }
   ensures  { permut_sub (old a) a pos size }
   ensures  { !S.count - old !S.count <= log2 size }
+  ensures  { !C.count - old !C.count <= 2*(log2 size+1) }
   = 'Start:
     let child = ref (2*pos+1) in
     let cur = ref pos in
@@ -249,6 +250,8 @@ module HeapSort
 
       invariant { !S.count >= at !S.count 'Start }
       invariant { power 2 (!S.count - at !S.count 'Start) <= !cur+1 <= size }
+      invariant { !child < size -> 0 <= !C.count - at !C.count 'Start <= 2*(!S.count - at !S.count 'Start) }
+      invariant { !C.count - at !C.count 'Start <= 2*(!S.count - at !S.count 'Start+1) }
 
       if !child+1 < size && C.event(a[!child] < a[!child+1]) then
         child := !child+1;
@@ -266,11 +269,13 @@ module HeapSort
   ensures { heap a 0 (length a) }
   ensures { permut_all (old a) a }
   ensures { let n = length a in !S.count - old !S.count <= n * log2 n }
+  ensures { let n = length a in !C.count - old !C.count <= n * 2 * (log2 n+1) }
   = 'Start:
     for i = div (length a) 2-1 downto 0 do
       invariant { heap a (i+1) (length a) }
       invariant { permut_all (at a 'Start) a }
       invariant { let n = length a in !S.count - at !S.count 'Start <= (n - i - 1) * log2 n }
+      invariant { let n = length a in !C.count - at !C.count 'Start <= (n - i - 1) * 2*(log2 n+1) }
       pushdown a i (length a)
     done
 
@@ -278,6 +283,7 @@ module HeapSort
   ensures { forall i j: int. 0 <= i <= j < length a -> a[i] <= a[j] }
   ensures { permut_all (old a) a }
   ensures { let n = length a in !S.count - old !S.count <= 2*n*(log2 n+1) }
+  ensures { let n = length a in !C.count - old !C.count <= 4*n*(log2 n+1) }
   = 'Start:
     makeheap a;
     'Loop:
@@ -287,6 +293,7 @@ module HeapSort
       invariant { forall n m: int. 0 <= n <= i < m < length a -> a[n] <= a[m] }
       invariant { permut_all (at a 'Start) a }
       invariant { let n = length a in !S.count - at !S.count 'Loop <= (n - i - 1) * (log2 n + 1) }
+      invariant { let n = length a in !C.count - at !C.count 'Loop <= (n - i - 1) * 2*(log2 n + 1) }
       S.event (swap a 0 i);
       assert { forall n m: int. i < n <= m < length a -> a[n] <= a[m] };
       assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
