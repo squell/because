@@ -2,18 +2,33 @@ module PermutFacts
   use import int.Int
   use import array.Array
   use import array.ArrayPermut
+  use import array.ArrayEq
 
-  lemma permut_trans:
+  goal permut_identity:
+    forall a b: array int, l u: int.
+      0 <= l <= u <= length a -> array_eq a b -> permut_sub a b l u
+
+  goal permut_symm:
+    forall a b: array int, l u: int. 
+      permut_sub a b l u -> permut_sub b a l u
+
+  goal permut_trans:
     forall a b c: array int, l u: int. 
       permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
 
-  lemma permut_strength:
+  goal permut_strength:
     forall a b: array int, l u: int.
       permut_sub a b l u -> permut_all a b
 
   lemma permut_shrink:
     forall a b: array int, l u: int.
       0 < u /\ permut a b l u /\ a [u-1] = b[u-1] -> permut a b l (u-1)
+
+  goal permut_exch_trans:
+    forall a b c: array int, l u i j: int.
+      l <= i < u /\ l <= j < u /\
+      permut_sub a b l u /\ exchange a c i j -> permut_sub c b l u (* -> permut_sub a d l u *)
+
 end
 
 (* Old Theory from why3 0.85, lifted to use the new parametrised version *)
@@ -114,10 +129,6 @@ module StoogeSort
   function num_of (p: (array int,int,int)): int->int->int = NumOf.numof (mislocated p)
 *)
 
-  lemma all_num_of:
-    forall a: array int, l u p q: int.
-      l <= u /\ (forall i: int. l <= i < u -> mislocated (a,p,q) i) -> num_of (a,p,q) l u = u-l 
-
   lemma exists_num_of_pre_0:
     forall a: array int, l u p q: int.
       num_of (a,p,q) l u = 0 -> forall i: int. l <= i < u -> not mislocated (a,p,q) i
@@ -125,6 +136,12 @@ module StoogeSort
   lemma exists_num_of_pre_1:
     forall a: array int, l u p q: int.
       num_of (a,p,q) l u = 0 -> forall j: int. l <= j < u -> not exists i: int. p <= i < q /\ a[i] > a[j]
+
+(* only slight improvements to verification speed, or may even be detrimental
+
+  lemma all_num_of:
+    forall a: array int, l u p q: int.
+      l <= u /\ (forall i: int. l <= i < u -> mislocated (a,p,q) i) -> num_of (a,p,q) l u = u-l 
 
   lemma exists_num_of:
     forall a: array int, l u p q: int.
@@ -134,12 +151,14 @@ module StoogeSort
     forall a1 a2: array int, i p q: int.
       not (p <= i < q)/\ permut_sub a1 a2 p q /\ a1[i] = a2[i] -> 
       mislocated (a2,p,q) i -> mislocated (a1,p,q) i
+*)
 
   lemma permut_num_of_left_weak:
     forall a1 a2: array int, l u p q: int.
       0 <= p <= q <= l <= u <= length a1 /\ permut_sub a1 a2 p q -> 
       num_of (a2,p,q) l u <= num_of (a1,p,q) l u
 
+(*
   lemma permut_num_of_left_weak_2:
     forall a1 a2: array int, l u p q: int.
       0 <= p <= q <= l <= u <= length a1 /\ permut_sub a1 a2 p q -> 
@@ -149,6 +168,7 @@ module StoogeSort
     forall a1 a2: array int, l u p q: int.
       0 <= p <= q <= l <= u <= length a1 /\ permut_sub a1 a2 p q -> 
       num_of (a1,p,q) l u = num_of (a2,p,q) l u
+*)
 
   let find_member (a: array int) (e: int) (l u: int): int
   requires { exists i: int. 0 <= l <= i < u <= length a /\ a[i] = e }
@@ -168,23 +188,24 @@ module StoogeSort
       array_eq_sub a1 a2 l u /\ array_eq_sub a1 a2 p q -> 
       num_of (a1,p,q) l u = num_of (a2,p,q) l u
 
-  let lemma exchange_eq_num_of_weak (a1 a2: array int) (l u p q: int): unit
+  let lemma exchange_num_of_weak (a1 a2: array int) (l u p q: int): unit
   requires { 0 <= p <= q <= l <= u < length a1 = length a2 }
   requires { exchange a1 a2 l u }
   ensures { num_of (a1,p,q) l (u+1) = num_of (a2,p,q) l (u+1) }
-  =  assert { a1[l] = a2[u] };
-     if l < u then (
+  =  if l < u then (
       assert { array_eq_sub a1 a2 (l+1) u };
       assert { array_eq_sub a1 a2 p q };
       assert { mislocated (a1,p,q) l <-> mislocated (a2,p,q) u };
       assert { mislocated (a1,p,q) u <-> mislocated (a2,p,q) l };
-      assert { num_of (a1,p,q) l (l+1) = num_of (a2,p,q) u (u+1) };
-      assert { num_of (a2,p,q) l (l+1) = num_of (a1,p,q) u (u+1) };
-      assert { num_of (a1,p,q) (l+1) u = num_of (a2,p,q) (l+1) u };
-      assert { num_of (a1,p,q) l u     = num_of (a1,p,q) l (l+1) + num_of (a1,p,q) (l+1) u
+(*
+      check  { num_of (a1,p,q) l (l+1) = num_of (a2,p,q) u (u+1) };
+      check  { num_of (a2,p,q) l (l+1) = num_of (a1,p,q) u (u+1) };
+      check  { num_of (a1,p,q) (l+1) u = num_of (a2,p,q) (l+1) u };
+      check  { num_of (a1,p,q) l u     = num_of (a1,p,q) l (l+1) + num_of (a1,p,q) (l+1) u
                                        = num_of (a2,p,q) u (u+1) + num_of (a2,p,q) (l+1) u (* + num_of(a2,p,q) u (u+1) }; *) };
-      assert { num_of (a1,p,q) l (u+1) = num_of (a1,p,q) l (l+1) + num_of (a1,p,q) (l+1) u + num_of (a1,p,q) u (u+1) 
+      check  { num_of (a1,p,q) l (u+1) = num_of (a1,p,q) l (l+1) + num_of (a1,p,q) (l+1) u + num_of (a1,p,q) u (u+1) 
                                        = num_of (a2,p,q) l (l+1) + num_of (a2,p,q) (l+1) u + num_of (a2,p,q) u (u+1) }
+*)
     )
 
   let lemma exchange_num_of (a1 a2: array int) (l u p q i j: int): unit
@@ -202,30 +223,26 @@ module StoogeSort
   requires { permut_sub a1 a2 l u }
   ensures { num_of (a2,p,q) l u <= num_of (a1,p,q) l u }
   = let b2 = copy a1 in
-    assert { array_eq a1 b2 };
     assert { permut_sub a1 b2 p q };
     assert { permut_sub a1 b2 l u };
     for i = u-1 downto l do
       invariant { num_of (b2,p,q) l u <= num_of (a1,p,q) l u }
       invariant { permut_sub b2 a2 l (i+1) }
-      assert { l <= i < u };
-      assert { permut b2 a2 l (i+1) };
-      assert { exists n: int. l <= n < i+1 /\ b2[n] = a2[i] };
       let x = find_member b2 a2[i] l (i+1) in
       'S: swap b2 x i;
+
+      assert { num_of (b2,p,q) l u <= num_of (at b2 'S,p,q) l u };
       assert { permut_sub (at b2 'S) b2 l (i+1) };
       assert { permut_sub b2 a2 l (i+1) };
-      assert { num_of (b2,p,q) l u <= num_of (at b2 'S,p,q) l u };
     done;
-    assert { permut_sub b2 a2 p q };
-    assert { num_of (a2,p,q) l u <= num_of (b2,p,q) l u }
+    assert { array_eq b2 a2 };
+    assert { permut_sub b2 a2 p q }
 
 (*
-  lemma permut_num_of_right_weak:
+  goal permut_num_of_right_weak:
     forall a1 a2: array int, l u p q: int.
       0 <= p <= q <= l <= u <= length a1 /\ permut_sub a1 a2 l u -> 
       num_of (a2,p,q) l u <= num_of (a1,p,q) l u
-*)
 
   lemma permut_num_of_right_weak_2:
     forall a1 a2: array int, l u p q: int.
@@ -237,6 +254,7 @@ module StoogeSort
       0 <= p <= q <= l <= u <= length a1 /\ permut_sub a1 a2 l u -> 
       num_of (a1,p,q) l u = num_of (a2,p,q) l u
 
+*)
 
   let rec stoogesort (a: array int) (first limit: int): unit
   variant { limit - first }
@@ -244,35 +262,29 @@ module StoogeSort
   ensures { permut_sub (old a) a first limit }
   ensures { forall i j: int. first <= i <= j < limit -> a[i] <= a[j] }
   = 'Start:
-    if a[first] > a[limit-1] then 
+    if a[first] > a[limit-1] then
       swap a first (limit-1);
-    assert { permut_sub (at a 'Start) a first limit };
     if limit - first > 2 then (
       let t = div (limit - first) 3 in
 
-      stoogesort a first (limit - t);
+      'X: stoogesort a first (limit - t);
       assert { num_of (a,first,first+t) (limit-t) limit <= t };
       assert { num_of (a,first,first+t) (first+t) (limit-t) = 0 };
       assert { num_of (a,first,first+t) (first+t) limit <= t };
-      assert { permut_sub (at a 'Start) a first limit };
-      stoogesort a (first+t) limit;
+      'Y: stoogesort a (first+t) limit;
       assert { num_of (a,first,first+t) (first+t) limit <= t };
-      assert { not exists i j: int. first+t <= i < limit-t <= j < limit /\ a[j] < a[i] };
       assert { num_of (a,first+t,limit-t) (limit-t) limit = 0 };
-      assert { num_of (a,first,first+t) (limit-t) limit > 0 -> exists i: int. limit-t <= i < limit /\ mislocated (a,first,first+t) i };
-      assert { num_of (a,first,first+t) (limit-t) limit > 0 -> forall i: int. first+t <= i < limit-t -> mislocated (a,first,first+t) i };
       assert { num_of (a,first,first+t) (limit-t) limit > 0 -> num_of (a,first,first+t) (first+t) (limit-t) = limit-t-(first+t) };
-      assert { num_of (a,first,first+t) (limit-t) limit > 0 -> limit-t-(first+t)+1 <= num_of (a,first,first+t) (first+t) limit <= t };
-      assert { limit-t-(first+t) >= t };
       assert { num_of (a,first,first+t) (limit-t) limit = 0 };
       assert { num_of (a,first,limit-t) (limit-t) limit = 0 };
-      assert { permut_sub (at a 'Start) a first limit };
-      assert { forall i j: int. limit-t <= i <= j < limit -> a[i] <= a[j] };
       'Z: stoogesort a first (limit - t);
       assert { num_of (a,first,limit-t) (limit-t) limit = 0 };
-      assert { forall i: int. limit-t <= i < limit -> a[i] = (at a 'Z)[i] };
       assert { forall i j: int. limit-t <= i <= j < limit -> a[i] <= a[j] };
-      assert { forall i j: int. first <= i < limit-t <= j < limit -> a[i] <= a[j] };
+
+      assert { permut_sub (at a 'Start) (at a 'X) first limit };
+      assert { permut_sub (at a 'X) (at a 'Y) first limit };
+      assert { permut_sub (at a 'Y) (at a 'Z) first limit };
+      assert { permut_sub (at a 'Z) a first limit };
     )
 
   let sort (a: array int): unit
