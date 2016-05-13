@@ -2,12 +2,12 @@
 <!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
 "http://why3.lri.fr/why3session.dtd">
 <why3session shape_version="4">
-<prover id="0" name="CVC3" version="2.4.1" timelimit="300" memlimit="1000"/>
+<prover id="0" name="CVC3" version="2.4.1" timelimit="13" memlimit="1000"/>
 <prover id="1" name="CVC4" version="1.4" timelimit="13" memlimit="1000"/>
 <prover id="3" name="Eprover" version="1.8-001" timelimit="30" memlimit="1000"/>
 <prover id="5" name="Alt-Ergo" version="0.99.1" timelimit="13" memlimit="1000"/>
 <prover id="6" name="Z3" version="4.3.2" timelimit="13" memlimit="1000"/>
-<file name="../stooge.mlw" expanded="true">
+<file name="../stooge.mlw">
 <theory name="PermutFacts" sum="25799093e63b469e7efff01099189bed">
  <goal name="permut_identity">
  <proof prover="5"><result status="valid" time="0.18" steps="73"/></proof>
@@ -83,7 +83,7 @@
  <proof prover="6"><result status="valid" time="0.17"/></proof>
  </goal>
 </theory>
-<theory name="StoogeSort" sum="c08f7058439adbbdfd53f68312a2d45d" expanded="true">
+<theory name="StoogeSort" sum="dc34a91182956c91a80c2d7baabb8808">
  <goal name="exists_num_of_pre_0">
  <proof prover="1" timelimit="20"><result status="valid" time="11.22"/></proof>
  </goal>
@@ -119,7 +119,7 @@
   <proof prover="6"><result status="valid" time="0.14"/></proof>
   </goal>
   <goal name="WP_parameter exchange_num_of_weak.5" expl="5. postcondition">
-  <proof prover="0" timelimit="13"><result status="valid" time="1.98"/></proof>
+  <proof prover="0"><result status="valid" time="1.98"/></proof>
   <proof prover="1"><result status="valid" time="0.81"/></proof>
   </goal>
   <goal name="WP_parameter exchange_num_of_weak.6" expl="6. postcondition">
@@ -222,8 +222,8 @@
   </goal>
  </transf>
  </goal>
- <goal name="WP_parameter stoogesort" expl="VC for stoogesort" expanded="true">
- <transf name="split_goal_wp" expanded="true">
+ <goal name="WP_parameter stoogesort" expl="VC for stoogesort">
+ <transf name="split_goal_wp">
   <goal name="WP_parameter stoogesort.1" expl="1. index in array bounds">
   <proof prover="6"><result status="valid" time="0.09"/></proof>
   </goal>
@@ -281,160 +281,100 @@
   <goal name="WP_parameter stoogesort.19" expl="19. assertion">
   <proof prover="6"><result status="valid" time="0.97"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.20" expl="20. postcondition" expanded="true">
-  <proof prover="6" obsolete="true"><result status="valid" time="0.18"/></proof>
-  <transf name="inline_goal" expanded="true">
-   <goal name="WP_parameter stoogesort.20.1" expl="1. postcondition" expanded="true">
-   <transf name="split_goal_wp" expanded="true">
-    <goal name="WP_parameter stoogesort.20.1.1" expl="1. VC for stoogesort">
-    <proof prover="6"><result status="valid" time="0.21"/></proof>
-    </goal>
-    <goal name="WP_parameter stoogesort.20.1.2" expl="2. VC for stoogesort" expanded="true">
-    <proof prover="6"><result status="timeout" time="12.99"/></proof>
-    <transf name="inline_goal" expanded="true">
-     <goal name="WP_parameter stoogesort.20.1.2.1" expl="1. VC for stoogesort" expanded="true">
-     <transf name="split_goal_wp" expanded="true">
-      <goal name="WP_parameter stoogesort.20.1.2.1.1" expl="1. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.12"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.20.1.2.1.2" expl="2. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.07"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.20.1.2.1.3" expl="3. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.12"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.20.1.2.1.4" expl="4. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.08"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.20.1.2.1.5" expl="5. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.13"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.20.1.2.1.6" expl="6. VC for stoogesort" expanded="true">
-      <proof prover="0"><undone/></proof>
-      <proof prover="1" timelimit="300"><undone/></proof>
-      <proof prover="5" timelimit="300"><undone/></proof>
-      <proof prover="6" timelimit="300"><undone/></proof>
-      </goal>
-     </transf>
-     </goal>
-    </transf>
-    </goal>
-    <goal name="WP_parameter stoogesort.20.1.3" expl="3. VC for stoogesort">
-    <proof prover="6"><result status="valid" time="0.26"/></proof>
-    </goal>
-   </transf>
-   </goal>
-  </transf>
+  <goal name="WP_parameter stoogesort.20" expl="20. assertion">
+  <proof prover="6"><result status="valid" time="0.20"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.21" expl="21. postcondition">
+  <goal name="WP_parameter stoogesort.21" expl="21. assertion">
+  <proof prover="6"><result status="valid" time="0.20"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.22" expl="22. assertion">
+  <proof prover="6"><result status="valid" time="0.20"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.23" expl="23. assertion">
+  <proof prover="6"><result status="valid" time="0.20"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.24" expl="24. postcondition">
+  <proof prover="6"><result status="valid" time="0.18"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.25" expl="25. postcondition">
   <proof prover="6"><result status="valid" time="0.27"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.22" expl="22. postcondition">
+  <goal name="WP_parameter stoogesort.26" expl="26. postcondition">
   <proof prover="6"><result status="valid" time="0.17"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.23" expl="23. postcondition">
+  <goal name="WP_parameter stoogesort.27" expl="27. postcondition">
   <proof prover="6"><result status="valid" time="13.50"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.24" expl="24. variant decrease">
+  <goal name="WP_parameter stoogesort.28" expl="28. variant decrease">
   <proof prover="6"><result status="valid" time="0.13"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.25" expl="25. precondition">
+  <goal name="WP_parameter stoogesort.29" expl="29. precondition">
   <proof prover="6"><result status="valid" time="0.16"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.26" expl="26. assertion">
+  <goal name="WP_parameter stoogesort.30" expl="30. assertion">
   <proof prover="6"><result status="valid" time="0.11"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.27" expl="27. assertion">
-  <proof prover="6"><result status="valid" time="0.13"/></proof>
-  </goal>
-  <goal name="WP_parameter stoogesort.28" expl="28. assertion">
-  <proof prover="6"><result status="valid" time="0.31"/></proof>
-  </goal>
-  <goal name="WP_parameter stoogesort.29" expl="29. variant decrease">
-  <proof prover="6"><result status="valid" time="0.13"/></proof>
-  </goal>
-  <goal name="WP_parameter stoogesort.30" expl="30. precondition">
-  <proof prover="6"><result status="valid" time="0.15"/></proof>
-  </goal>
   <goal name="WP_parameter stoogesort.31" expl="31. assertion">
-  <proof prover="6"><result status="valid" time="0.15"/></proof>
+  <proof prover="6"><result status="valid" time="0.13"/></proof>
   </goal>
   <goal name="WP_parameter stoogesort.32" expl="32. assertion">
-  <proof prover="6"><result status="valid" time="0.32"/></proof>
+  <proof prover="6"><result status="valid" time="0.31"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.33" expl="33. assertion">
-  <proof prover="6"><result status="valid" time="0.74"/></proof>
+  <goal name="WP_parameter stoogesort.33" expl="33. variant decrease">
+  <proof prover="6"><result status="valid" time="0.13"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.34" expl="34. assertion">
-  <proof prover="6"><result status="valid" time="0.48"/></proof>
+  <goal name="WP_parameter stoogesort.34" expl="34. precondition">
+  <proof prover="6"><result status="valid" time="0.15"/></proof>
   </goal>
   <goal name="WP_parameter stoogesort.35" expl="35. assertion">
-  <proof prover="6"><result status="valid" time="0.35"/></proof>
+  <proof prover="6"><result status="valid" time="0.15"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.36" expl="36. variant decrease">
-  <proof prover="6"><result status="valid" time="0.16"/></proof>
+  <goal name="WP_parameter stoogesort.36" expl="36. assertion">
+  <proof prover="6"><result status="valid" time="0.32"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.37" expl="37. precondition">
-  <proof prover="6"><result status="valid" time="0.12"/></proof>
+  <goal name="WP_parameter stoogesort.37" expl="37. assertion">
+  <proof prover="6"><result status="valid" time="0.74"/></proof>
   </goal>
   <goal name="WP_parameter stoogesort.38" expl="38. assertion">
-  <proof prover="6"><result status="valid" time="0.17"/></proof>
+  <proof prover="6"><result status="valid" time="0.48"/></proof>
   </goal>
   <goal name="WP_parameter stoogesort.39" expl="39. assertion">
+  <proof prover="6"><result status="valid" time="0.35"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.40" expl="40. variant decrease">
+  <proof prover="6"><result status="valid" time="0.16"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.41" expl="41. precondition">
+  <proof prover="6"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.42" expl="42. assertion">
+  <proof prover="6"><result status="valid" time="0.17"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.43" expl="43. assertion">
   <proof prover="6"><result status="valid" time="1.77"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.40" expl="40. postcondition" expanded="true">
-  <proof prover="6" obsolete="true"><result status="valid" time="0.17"/></proof>
-  <transf name="inline_goal" expanded="true">
-   <goal name="WP_parameter stoogesort.40.1" expl="1. postcondition" expanded="true">
-   <transf name="split_goal_wp" expanded="true">
-    <goal name="WP_parameter stoogesort.40.1.1" expl="1. VC for stoogesort">
-    <proof prover="6"><result status="valid" time="0.20"/></proof>
-    </goal>
-    <goal name="WP_parameter stoogesort.40.1.2" expl="2. VC for stoogesort" expanded="true">
-    <proof prover="6"><result status="timeout" time="13.02"/></proof>
-    <transf name="inline_goal" expanded="true">
-     <goal name="WP_parameter stoogesort.40.1.2.1" expl="1. VC for stoogesort" expanded="true">
-     <transf name="split_goal_wp" expanded="true">
-      <goal name="WP_parameter stoogesort.40.1.2.1.1" expl="1. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.12"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.40.1.2.1.2" expl="2. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.07"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.40.1.2.1.3" expl="3. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.07"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.40.1.2.1.4" expl="4. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.07"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.40.1.2.1.5" expl="5. VC for stoogesort">
-      <proof prover="6"><result status="valid" time="0.13"/></proof>
-      </goal>
-      <goal name="WP_parameter stoogesort.40.1.2.1.6" expl="6. VC for stoogesort" expanded="true">
-      <proof prover="0"><result status="timeout" time="12.94"/></proof>
-      <proof prover="1" timelimit="300"><result status="timeout" time="12.78"/></proof>
-      <proof prover="5" timelimit="300"><result status="timeout" time="13.00"/></proof>
-      <proof prover="6" timelimit="300"><result status="timeout" time="12.99"/></proof>
-      </goal>
-     </transf>
-     </goal>
-    </transf>
-    </goal>
-    <goal name="WP_parameter stoogesort.40.1.3" expl="3. VC for stoogesort">
-    <proof prover="6"><result status="valid" time="0.20"/></proof>
-    </goal>
-   </transf>
-   </goal>
-  </transf>
+  <goal name="WP_parameter stoogesort.44" expl="44. assertion">
+  <proof prover="6"><result status="valid" time="0.25"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.41" expl="41. postcondition">
+  <goal name="WP_parameter stoogesort.45" expl="45. assertion">
+  <proof prover="6"><result status="valid" time="0.21"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.46" expl="46. assertion">
+  <proof prover="6"><result status="valid" time="0.23"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.47" expl="47. assertion">
+  <proof prover="6"><result status="valid" time="0.18"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.48" expl="48. postcondition">
+  <proof prover="6"><result status="valid" time="0.17"/></proof>
+  </goal>
+  <goal name="WP_parameter stoogesort.49" expl="49. postcondition">
   <proof prover="6"><result status="valid" time="0.26"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.42" expl="42. postcondition">
+  <goal name="WP_parameter stoogesort.50" expl="50. postcondition">
   <proof prover="6"><result status="valid" time="0.14"/></proof>
   </goal>
-  <goal name="WP_parameter stoogesort.43" expl="43. postcondition">
+  <goal name="WP_parameter stoogesort.51" expl="51. postcondition">
   <proof prover="6"><result status="valid" time="0.10"/></proof>
   </goal>
  </transf>
