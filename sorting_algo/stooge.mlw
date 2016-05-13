@@ -4,30 +4,27 @@ module PermutFacts
   use import array.ArrayPermut
   use import array.ArrayEq
 
-  goal permut_identity:
+  lemma permut_identity:
     forall a b: array int, l u: int.
       0 <= l <= u <= length a -> array_eq a b -> permut_sub a b l u
 
-  goal permut_symm:
-    forall a b: array int, l u: int. 
-      permut_sub a b l u -> permut_sub b a l u
-
-  goal permut_trans:
+  lemma permut_trans:
     forall a b c: array int, l u: int. 
       permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
-
-  goal permut_strength:
-    forall a b: array int, l u: int.
-      permut_sub a b l u -> permut_all a b
 
   lemma permut_shrink:
     forall a b: array int, l u: int.
       0 < u /\ permut a b l u /\ a [u-1] = b[u-1] -> permut a b l (u-1)
 
-  goal permut_exch_trans:
+  lemma permut_exch_trans_1:
     forall a b c: array int, l u i j: int.
       l <= i < u /\ l <= j < u /\
-      permut_sub a b l u /\ exchange a c i j -> permut_sub c b l u (* -> permut_sub a d l u *)
+      permut_sub a b l u /\ exchange b c i j -> permut_sub a c l u
+
+  lemma permut_exch_trans_2:
+    forall a b c: array int, l u i j: int.
+      l <= i < u /\ l <= j < u /\
+      permut_sub a b l u /\ exchange a c i j -> permut_sub c b l u
 
 end
 
@@ -229,13 +226,8 @@ module StoogeSort
       invariant { num_of (b2,p,q) l u <= num_of (a1,p,q) l u }
       invariant { permut_sub b2 a2 l (i+1) }
       let x = find_member b2 a2[i] l (i+1) in
-      'S: swap b2 x i;
-
-      assert { num_of (b2,p,q) l u <= num_of (at b2 'S,p,q) l u };
-      assert { permut_sub (at b2 'S) b2 l (i+1) };
-      assert { permut_sub b2 a2 l (i+1) };
+      swap b2 x i;
     done;
-    assert { array_eq b2 a2 };
     assert { permut_sub b2 a2 p q }
 
 (*
