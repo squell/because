@@ -76,10 +76,12 @@ predicate go_sieve_init_inv (ready: state) (src: chan int) (out: chan int)
   = ready => src
 predicate go_sieve_req_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int)
   = (forall x: int. mem x src -> 2 <= x /\ forall d: int. 2 <= d -> divides d x -> mem d src)
-predicate go_sieve_inv_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int)
+predicate go_sieve_inv_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int) (prev: state)
   = ((exists x: int. mem x src /\ prime x /\ not mem_add x out old_out) -> ready => out)
   /\
     (not (exists x: int. mem x src /\ prime x /\ not mem_add x out old_out) -> ready => src)
+  /\
+    (prev => out -> ready => out)
 predicate go_sieve_req_2 (ready: state) (src: chan int) (out: chan int) (old_out: chan int)
   = true
 predicate go_sieve_inv_2 (ready: state) (src: chan int) (out: chan int) (old_out: chan int)
@@ -96,11 +98,11 @@ predicate go_sieve_inv_2 (ready: state) (src: chan int) (out: chan int) (old_out
    ((exists x: int. mem x src /\ prime x /\ not mem x out) -> ready => out)
 *)
 
-val go_sieve_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int): unit
+val go_sieve_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int) (prev: state): unit
 requires { "expl:go_sieve_1" go_sieve_req_1 ready src out old_out }
-ensures  { go_sieve_inv_1 ready src out old_out }
-val go_sieve_mk_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int): unit
-requires { "expl:go_sieve_mk_1" go_sieve_inv_1 ready src out old_out }
+ensures  { go_sieve_inv_1 ready src out old_out prev }
+val go_sieve_mk_1 (ready: state) (src: chan int) (out: chan int) (old_out: chan int) (prev: state): unit
+requires { "expl:go_sieve_mk_1" go_sieve_inv_1 ready src out old_out prev }
 ensures  { go_sieve_req_1 ready src out old_out }
 val go_sieve_2 (ready: state) (src: chan int) (out: chan int) (old_out: chan int): unit
 requires { "expl:go_sieve_2" go_sieve_req_2 ready src out old_out }
@@ -135,6 +137,7 @@ diverges
 
     assert { go_sieve_init_inv this src out };
 
+'T1:
     let p = ref (recv src this) in
 
     P.reachable (any bool ensures { result <-> handled out });
@@ -142,7 +145,7 @@ diverges
 
     assume { "expl:go_sieve_mk_1" go_sieve_req_1 this src out (at out 'Entry) };
     assert { prime !p };
-    assert { "expl:go_sieve_mk_1" go_sieve_inv_1 this src out (at out 'Entry) };
+    assert { "expl:go_sieve_mk_1" go_sieve_inv_1 this src out (at out 'Entry) (at this 'T1) };
 
     send !p out this;
     P.reachable (any bool ensures { result <-> handled src });
@@ -172,10 +175,14 @@ diverges
       invariant { ?obligation <-> handled src /\ ((exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> handled out) }
       invariant { mem_add !p out (at out 'Entry) }
 'Begin:
+(* TODO: how to automate this? *)
       abstract ensures { (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) ->  handled out }
            assume { go_sieve => out -> handled out };
       end;
+(* TODO: this should be a type invariant *)
+      assume { "expl:hack" ( ?obligation -> handled out ) <-> ( this => out ) };
 
+'T2:
       let n = ref (recv src this) in
 
       P.reachable (any bool ensures { result <-> handled src });
@@ -184,12 +191,22 @@ diverges
       P.reachable (any bool ensures { result <-> (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> handled out });
       assume { (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => out };
 
+      assume { "expl:hack" ( ?obligation -> handled out ) <-> ( this => out ) };
+
       assume { "expl:go_sieve_mk_1" go_sieve_req_1 this src out (at out 'Entry) };
-      assert { "expl:go_sieve_mk_1" go_sieve_inv_1 this src out (at out 'Entry) };
+      assert { "expl:go_sieve_mk_1" go_sieve_inv_1 this src out (at out 'Entry) (at this 'T2) };
 
       if (mod !n !p <> 0) then (
 
         assert { forall x. mem x src /\ not (divides !p x) /\ x <> !n -> mem x filt };
+
+	abstract ensures { go_sieve => filt }
+	ensures { 0 <= out.pointer }
+	ensures { this => src }
+	ensures { (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => out }
+	ensures { not (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => src }
+	ensures { ?obligation <-> handled src /\ ((exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> handled out) }
+        ensures { mem_add !p out (at out 'Entry) }
 
         while not any bool ensures { result <-> go_sieve => filt } do
            invariant { 0 <= out.pointer }
@@ -204,6 +221,8 @@ diverges
            invariant { mem_add !p out (at out 'Entry) }
            out[this <- go_sieve];
 (* TODO? out[<-] should not affect outstanding promises *)
+(* fix: let reachable re-instate promises to this => *)
+(* fix: assume this => in precondition *)
 (* problem: we cannot quantify over chan 'a here *)
 assume { forall q: chan int. (?obligation <-> handled q) -> this => q };
 check { this => src }; (* out[<-] should not affect this *)
@@ -219,9 +238,42 @@ assert { forall x. mem_add x out (at out 'Entry_go_sieve) -> mem_add x out (at o
            assert { "expl:go_sieve_mk_2" go_sieve_inv_2 this src out (at out 'Entry) };
         done;
 
+        for dummy = 1 to any int do
+           invariant { go_sieve => filt }
+           invariant { 0 <= out.pointer }
+           invariant { this => src }
+           invariant { (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => out }
+           invariant { not (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => src }
+           invariant { ?obligation <-> handled src /\ ((exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> handled out) }
+           invariant { go_sieve => filt \/ go_sieve => out }
+           invariant { go_sieve => filt \/ this => out }
+           invariant { go_sieve => filt \/ at (cursor out) 'Begin+1 >= cursor out }
+           invariant { mem_add !p out (at out 'Entry) }
+           if any bool ensures { result <-> go_sieve => out } then ( 
+assume { this => out }; (* TODO/question: this can do no harm; otherwise it makes underspecification difficult *)
+		out[this <- go_sieve];
+(* TODO? out[<-] should not affect outstanding promises *)
+(* problem: we cannot quantify over chan 'a here *)
+assume { forall q: chan int. (?obligation <-> handled q) -> this => q };
+check { this => src }; (* out[<-] should not affect this *)
+
+P.reachable (any bool ensures { result <-> (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> handled out });
+assume { (exists x: int. mem x src /\ prime x /\ not mem_add x out (at out 'Entry)) -> this => out };
+
+           assert { "expl:go_sieve_2" go_sieve_req_2 go_sieve filt out (at out 'Entry_go_sieve) };
+           assume { "expl:go_sieve_2" go_sieve_inv_2 go_sieve filt out (at out 'Entry_go_sieve) };
+           assume { "expl:go_sieve_mk_2" go_sieve_req_2 this src out (at out 'Entry) };
+(* if we disable mem_add_R, this is necessary -- actually makes the proof go faster
+assert { forall x. mem_add x out (at out 'Entry_go_sieve) -> mem_add x out (at out 'Entry) }; *)
+           assert { "expl:go_sieve_mk_2" go_sieve_inv_2 this src out (at out 'Entry) };
+	)
+        done;
+        end;
+
+'T3:
         send !n filt go_sieve;
         assert { "expl:go_sieve_1" go_sieve_req_1 go_sieve filt out (at out 'Entry_go_sieve) };
-        assume { "expl:go_sieve_1" go_sieve_inv_1 go_sieve filt out (at out 'Entry_go_sieve) };
+        assume { "expl:go_sieve_1" go_sieve_inv_1 go_sieve filt out (at out 'Entry_go_sieve) (at go_sieve 'T3) };
       );
       check { "expl:conditional variant decrease"
             not (at ?obligation) 'Begin ->
@@ -266,8 +318,18 @@ diverges
      invariant { cursor outp >= 0 }
      invariant { go_generate => inp }
      invariant { go_sieve => inp }
+(*
+     invariant { go_sieve => outp -> exists x: int. mem x inp /\ prime x /\ not mem_add x outp (at outp 'Entry_go_sieve) }
+*)
 (* fwd-variant 1 *)
      invariant { forall x. mem x outp -> mem x inp }
+
+     abstract ensures { go_sieve => outp }
+     ensures { cursor inp >= 0 }
+     ensures { cursor outp >= 0 }
+     ensures { go_generate => inp }
+     ensures { go_sieve => inp \/ go_sieve => outp }
+     ensures { forall x. mem x outp -> mem x inp }
 'Fwd:
      while not any bool ensures { result <-> go_sieve => outp } do
        invariant { cursor inp >= 0 }
@@ -278,16 +340,46 @@ diverges
        invariant { forall x. mem x outp -> mem x inp }
        invariant { go_sieve => outp \/ inp[cursor inp-1] < at (some_larger_prime (inp[cursor inp-1])) 'Fwd }
        variant { at (some_larger_prime (inp[cursor inp-1])) 'Fwd - cursor inp }
+
+(* new invariant *)
+(*
+invariant { go_sieve => outp -> exists x: int. mem x inp /\ prime x /\ not mem_add x outp (at outp 'Entry_go_sieve) }
+*)
 'Begin:
        inp[go_sieve <- go_generate];
        go_generate_1 go_generate 2 inp;
        assert { "expl:go_sieve_2" go_sieve_req_1 go_sieve inp outp (at outp 'Entry_go_sieve) };
-       assume { "expl:go_sieve_2" go_sieve_inv_1 go_sieve inp outp (at outp 'Entry_go_sieve)  };
+       assume { "expl:go_sieve_2" go_sieve_inv_1 go_sieve inp outp (at outp 'Entry_go_sieve) (at go_sieve 'Begin) };
    (* fwd-variant 1 *)
        assert { not mem inp[cursor inp-1] outp };                   (* ! *)
        assert { (prime inp[cursor inp-1]) -> go_sieve => outp };    (* ! *)
      done;
-(* TODO overrun *)
+
+     for dummy = 1 to any int do
+       invariant { go_sieve => outp }
+       invariant { cursor inp >= 0 }
+       invariant { cursor outp >= 0 }
+       invariant { go_generate => inp }
+       invariant { go_sieve => inp \/ go_sieve => outp }
+   (* fwd-variant 1 *)
+       invariant { forall x. mem x outp -> mem x inp }
+       invariant { go_sieve => outp \/ inp[cursor inp-1] < at (some_larger_prime (inp[cursor inp-1])) 'Fwd }
+
+(* new invariant *)
+(*
+invariant { go_sieve => outp -> exists x: int. mem x inp /\ prime x /\ not mem_add x outp (at outp 'Entry_go_sieve) }
+*)
+'Begin:
+       if any bool ensures { result <-> go_generate => inp /\ go_sieve => inp } then (
+       inp[go_sieve <- go_generate];
+       go_generate_1 go_generate 2 inp;
+       assert { "expl:go_sieve_2" go_sieve_req_1 go_sieve inp outp (at outp 'Entry_go_sieve) };
+       assume { "expl:go_sieve_2" go_sieve_inv_1 go_sieve inp outp (at outp 'Entry_go_sieve) (at go_sieve 'Begin) };
+  )
+     done;
+   
+     end;
+
      let n = recv outp go_sieve in
      assert { "expl:go_sieve_2" go_sieve_req_2 go_sieve inp outp (at outp 'Entry_go_sieve) };
      assume { "expl:go_sieve_2" go_sieve_inv_2 go_sieve inp outp (at outp 'Entry_go_sieve)  };
