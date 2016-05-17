@@ -1,0 +1,172 @@
+module Counter
+
+  use import int.Int
+  use import int.Abs
+  use export ref.Refint
+
+  val ghost count: ref int
+
+  let event (effect: 'a): 'a
+  writes { count }
+  ensures { !count = old !count + 1 }
+  ensures { result = effect }
+  = count +=1; effect
+
+end
+
+module Logarithm
+ 
+  use import int.Int
+  use import int.Power
+  use import set.SetComprehension
+  use import ref.Ref
+  use import ref.Refint
+
+  function log_candidates (base x: int): set int 
+    = comprehension (\e. e >= 0 /\ power base e <= x < power base (e+1))
+
+  lemma log_uniqueness:  (* not necessary for cvc4 *)
+    forall base x. base > 1 -> x > 0 -> 
+      forall a b. mem a (log_candidates base x) -> mem b (log_candidates base x) -> a = b
+  
+  function log (base x: int): int
+    = choose (log_candidates base x)
+
+  let log (base x: int): int
+  requires { base > 1 }
+  requires { x > 0 }
+  ensures { 0 <= result }
+  ensures { power base result <= x < power base (result+1) }
+  ensures { result = log base x }
+    = let n = ref 1 in
+      while power base !n <= x do
+        variant { x - power base !n }
+        invariant { 1 <= !n }
+        invariant { power base (!n-1) <= x }
+        assert { power base !n > 0 };
+        n += 1
+      done;
+      assert { mem (!n-1) (log_candidates base x) };
+      !n-1
+
+  let lemma log_is_well_defined (base x: int): unit
+  requires { base > 1 }
+  requires { x > 0 }
+  ensures { mem (log base x) (log_candidates base x) }
+    = log base x; ()
+
+  lemma log_positive:
+    forall base x. base > 1 -> x > 0 -> log base x >= 0
+
+  lemma log_power_relation:
+    forall base x. base > 1 -> x > 0 -> power base (log base x) <= x < power base (log base x+1)
+
+  lemma power_inverse:
+    forall base x. base > 1 -> x > 0 -> forall y. y >= 0 -> x = power base y -> log base x = y
+
+  lemma log_power_inverse:
+    forall base x. base > 1 -> x >= 0 -> log base (power base x) = x
+
+  goal power_inverse_uniq:
+    forall base x. base > 1 -> x > 0 -> (exists y. y >= 0 /\ x = power base y) -> power base (log base x) = x
+
+  function log2 (x: int): int = log 2 x
+
+end
+
+module MergeSort
+  use import int.Int
+  use import list.List
+  use import list.Length
+  use import list.NumOcc
+  use import list.Append
+  use import list.SortedInt
+  use import ref.Ref
+  use import int.Power
+  use import int.EuclideanDivision
+  use import Logarithm
+
+  use Counter as C
+
+  let rec split (data: list int): (list int, list int)
+  variant { length data }
+  returns { (a,_) -> length a <= div (length data+1) 2 }
+  returns { (_,b) -> length b <= div (length data) 2 }
+  returns { (a,_) -> length data <= 2*length a <= length data+1 }
+  returns { (_,b) -> length data-1 <= 2*length b <= length data }
+  returns { (a,b) -> length data = length a + length b }
+  returns { (a,b) -> forall e. num_occ e a + num_occ e b = num_occ e data }
+  = match data with
+    | Nil -> (Nil, Nil)
+    | Cons _ Nil -> (data, Nil)
+    | Cons x (Cons y rest) -> 
+        let xs,ys = split rest in (Cons x xs, Cons y ys)
+    end
+
+  let rec merge (a b: list int): list int
+  variant { length a + length b }
+  ensures { sorted a -> sorted b -> sorted result }
+  ensures { forall e. num_occ e a + num_occ e b = num_occ e result }
+  ensures { length result = length a + length b }
+  ensures { !C.count - old !C.count <= length a + length b }
+  = match a, b with
+    | (Cons x xs, Cons y ys) -> 
+        if C.event(x <= y) then Cons x (merge xs b) else Cons y (merge a ys)
+    | _ -> a ++ b
+    end
+
+  lemma sorted_singleton: forall x. length x = 1 -> sorted x
+
+  let rec sortp (data: list int): list int
+  variant { length data }
+  ensures { sorted result }
+  ensures { forall e. num_occ e data = num_occ e result }
+  ensures { length result = length data }
+  ensures { (exists k. k >= 0 /\ power 2 k = length data) -> let n = length data in !C.count - old !C.count <= n * log2 n }
+  = if length data <= 1 then 
+      data 
+    else 
+      let l, r = split data in
+      merge (sortp l) (sortp r)
+
+  lemma log_div_fact:
+    forall n. n > 1 -> (exists k. k >= 0 /\ n = power 2 k) -> log2 (div n 2) = log2 n - 1
+
+  let lemma n_log_n_order (base n m: int)
+  requires { base > 1 }
+  requires { 0 < n <= m }
+  ensures { n * log base n <= m * log base m }
+   = assert { log base n <= log base m };
+     assert { n * log base n <= n * log base m }
+
+  function upper2 (x:int): int 
+    = if x = 0 then 0 else if (exists k. k >= 0 /\ power 2 k = x) then x else power 2 (log 2 x+1)
+  
+  let lemma upper2_is_power (x: int)
+  requires { x > 0 }
+  ensures { exists k. k >= 0 /\ upper2 x = power 2 k }
+    = assert { (exists k. k >= 0 /\ power 2 k = x) -> x = power 2 (log 2 x) }
+
+  lemma upper2_is_bound: forall x. x >= 0 -> x <= upper2 x
+  lemma upper2_is_least: forall x y. x >= 0 -> y >= 0 -> x <= power 2 y -> upper2 x <= power 2 y
+
+  let rec sort (data: list int): list int
+  variant { length data }
+  ensures { sorted result }
+  ensures { forall e. num_occ e data = num_occ e result }
+  ensures { length result = length data }
+  ensures { let n = upper2 (length data) in !C.count - old !C.count <= n * (log2 n) }
+  ensures { let n = length data in !C.count - old !C.count <= 2*n * (log2 n+1) }
+  = if length data <= 1 then 
+      data 
+    else 
+      let l, r = split data in
+'Start:
+      assert { 2*upper2 (length r) <= 2*upper2 (length l) <= upper2 (length data) };
+      let l = sort l in
+      let r = sort r in
+      assert { let n = length data in !C.count - at !C.count 'Start <= 2 * (div (upper2 n) 2) * (log2 (div (upper2 n) 2)) };
+      assert { let n = length data in !C.count - at !C.count 'Start <= (upper2 n) * (log2 (upper2 n)-1) }; (* not really necessary *)
+      merge l r
+
+end

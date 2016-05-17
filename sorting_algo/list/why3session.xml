@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="4">
+<prover id="0" name="CVC3" version="2.4.1" timelimit="13" memlimit="1000"/>
+<prover id="2" name="CVC4" version="1.4" timelimit="13" memlimit="1000"/>
+<prover id="4" name="Eprover" version="1.8-001" timelimit="13" memlimit="1000"/>
+<prover id="5" name="Alt-Ergo" version="0.99.1" timelimit="13" memlimit="1000"/>
+<file name="../list.mlw">
+<theory name="MergeSort" sum="629c738ae93b20b8370e55a79ed18842">
+ <goal name="WP_parameter split" expl="VC for split">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter split.1" expl="1. postcondition">
+  <proof prover="5"><result status="valid" time="0.03" steps="4"/></proof>
+  </goal>
+  <goal name="WP_parameter split.2" expl="2. postcondition">
+  <proof prover="2"><result status="valid" time="0.07"/></proof>
+  </goal>
+  <goal name="WP_parameter split.3" expl="3. postcondition">
+  <proof prover="2"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter split.4" expl="4. postcondition">
+  <proof prover="5"><result status="valid" time="0.06" steps="10"/></proof>
+  </goal>
+  <goal name="WP_parameter split.5" expl="5. postcondition">
+  <proof prover="2"><result status="valid" time="0.06"/></proof>
+  </goal>
+  <goal name="WP_parameter split.6" expl="6. postcondition">
+  <proof prover="2"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter split.7" expl="7. variant decrease">
+  <proof prover="2"><result status="valid" time="0.15"/></proof>
+  </goal>
+  <goal name="WP_parameter split.8" expl="8. postcondition">
+  <proof prover="5"><result status="valid" time="0.08" steps="38"/></proof>
+  </goal>
+  <goal name="WP_parameter split.9" expl="9. postcondition">
+  <proof prover="5"><result status="valid" time="0.09" steps="29"/></proof>
+  </goal>
+  <goal name="WP_parameter split.10" expl="10. postcondition">
+  <proof prover="0"><result status="valid" time="10.52"/></proof>
+  <proof prover="2"><result status="valid" time="0.23"/></proof>
+  <proof prover="5"><result status="valid" time="6.00" steps="1617"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="WP_parameter merge" expl="VC for merge">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter merge.1" expl="1. variant decrease">
+  <proof prover="2"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.2" expl="2. postcondition">
+  <proof prover="2"><result status="valid" time="2.24"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.3" expl="3. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.4" expl="4. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.5" expl="5. variant decrease">
+  <proof prover="2"><result status="valid" time="0.11"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.6" expl="6. postcondition">
+  <proof prover="2"><result status="valid" time="1.91"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.7" expl="7. postcondition">
+  <proof prover="2"><result status="valid" time="0.14"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.8" expl="8. postcondition">
+  <proof prover="2"><result status="valid" time="0.13"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.9" expl="9. postcondition">
+  <proof prover="2"><result status="valid" time="0.11"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.10" expl="10. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.11" expl="11. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.12" expl="12. postcondition">
+  <proof prover="2"><result status="valid" time="0.10"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.13" expl="13. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+  <goal name="WP_parameter merge.14" expl="14. postcondition">
+  <proof prover="2"><result status="valid" time="0.11"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="sorted_singleton">
+ <proof prover="4"><result status="valid" time="6.52"/></proof>
+ </goal>
+ <goal name="WP_parameter sort" expl="VC for sort">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter sort.1" expl="1. postcondition">
+  <proof prover="2"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter sort.2" expl="2. variant decrease">
+  <proof prover="2"><result status="valid" time="0.07"/></proof>
+  </goal>
+  <goal name="WP_parameter sort.3" expl="3. variant decrease">
+  <proof prover="2"><result status="valid" time="0.08"/></proof>
+  </goal>
+  <goal name="WP_parameter sort.4" expl="4. postcondition">
+  <proof prover="2"><result status="valid" time="0.08"/></proof>
+  </goal>
+  <goal name="WP_parameter sort.5" expl="5. postcondition">
+  <proof prover="2"><result status="valid" time="0.20"/></proof>
+  </goal>
+  <goal name="WP_parameter sort.6" expl="6. postcondition">
+  <proof prover="2"><result status="valid" time="0.12"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="WP_parameter sorted_equivalence" expl="VC for sorted_equivalence">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter sorted_equivalence.1" expl="1. variant decrease">
+  <proof prover="4"><result status="valid" time="0.06"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.2" expl="2. precondition">
+  <proof prover="0"><result status="valid" time="4.45"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.3" expl="3. precondition">
+  <proof prover="4"><result status="valid" time="0.04"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.4" expl="4. precondition">
+  <proof prover="4"><result status="valid" time="0.05"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.5" expl="5. postcondition">
+  <proof prover="4"><result status="valid" time="0.03"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.6" expl="6. postcondition">
+  <proof prover="4"><result status="valid" time="0.09"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.7" expl="7. postcondition">
+  <proof prover="4"><result status="valid" time="0.08"/></proof>
+  </goal>
+  <goal name="WP_parameter sorted_equivalence.8" expl="8. postcondition">
+  <proof prover="4"><result status="valid" time="0.08"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="WP_parameter length_equivalence" expl="VC for length_equivalence">
+ <transf name="split_goal_wp">
+  <goal name="WP_parameter length_equivalence.1" expl="1. postcondition">
+  <proof prover="4"><result status="valid" time="0.19"/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+</file>
+</why3session>

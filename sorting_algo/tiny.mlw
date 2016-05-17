@@ -73,6 +73,7 @@ module TinySort
     if length a > pos+1 then (
        while true do
          invariant { permut_sub (at a 'Start) a pos (length a) }
+         variant { if forall i: int. pos <= i < length a -> a[pos] <= a[i] then 0 else 1 }
          tinysort a (pos+1);
          if a[pos] <= a[pos+1] then raise (Break ());
          swap a pos (pos+1);

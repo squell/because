@@ -8,8 +8,7 @@ module MergeSort
 
   let rec split (data: list int): (list int, list int)
   variant { length data }
-  returns { (a,_) -> length data <= 2*length a <= length data+1 }
-  returns { (_,b) -> length data-1 <= 2*length b <= length data }
+  returns { (_,b) -> length data > 1 -> 0 < length b < length data }
   returns { (a,b) -> length data = length a + length b }
   returns { (a,b) -> forall e. num_occ e a + num_occ e b = num_occ e data }
   = match data with
