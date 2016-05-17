@@ -1,18 +1,45 @@
-theory CantorSchroederBernstein
+theory InverseFunction
 
 use import set.SetComprehension
-use import set.Set
-use import int.Int
 
-predicate injective (f: 'a->'b)
-  = forall x y. f x = f y -> x = y
-
-function inverse (f: 'a->'b): 'b -> 'a
+function inverse (f: 'a->'b): 'b->'a
   = \y. choose (comprehension (\x. f x = y))
 
 lemma inverse_def:
-  forall f: 'a->'b. injective f ->
-    forall x. inverse f (f x) = x
+  forall f: 'a->'b.
+    forall x. f (inverse f (f x)) = f x
+
+predicate injective (f: 'a->'b)
+  = forall x. inverse f (f x) = x
+
+predicate surjective (f: 'a->'b)
+  = forall x. f (inverse f x) = x
+
+(*
+predicate injective (f: 'a->'b)
+  = forall x y. f x = f y -> x = y
+
+predicate surjective (f: 'a->'b)
+  = forall y. exists x. f x = y
+*)
+
+(*
+lemma injective_correctness:
+  forall f: 'a->'b. injective f  <-> forall x. inverse f (f x) = x
+lemma surjective_correctness:
+  forall f: 'a->'b. surjective f  <-> forall x. f(inverse f x) = x
+lemma injective_correctness:
+  forall f: 'a->'b. injective f  <-> forall x y. f x = f y -> x = y
+lemma surjective_correctness:
+  forall f: 'a->'b. surjective f <-> forall y. exists x. f x = y
+*)
+
+end
+
+theory CantorSchroederBernstein
+
+use import set.SetComprehension
+use import InverseFunction
 
 type a
 type b
@@ -26,39 +53,25 @@ axiom g_is_injective: injective g
 function phi (x: set a): set a 
   = diff all (map g (diff all (map f x)))
 
-goal phi_monotonic:
-  forall x y. subset x y -> subset (phi x) (phi y)
-
-clone tarski.Tarski with type t = a, function f = phi
-
-constant fixpoint: set a = Tarski.mu
-
-(* unnecessary, but speeds things up *)
-lemma phi_corollary:
-  fixpoint = diff all (map g (diff all (map f fixpoint)))
+clone tarski.Tarski with type t = a, function f = phi, goal f_is_monotonic
 
 function h (x: a): b
-  = if mem x fixpoint then f x else inverse g x
+  = if mem x Tarski.mu then f x else inverse g x
+
+(*
+goal h_invertible:
+  forall x. inverse h (h x) = x
+*)
 
 lemma h_disjointness:
-  forall x. mem x (map f fixpoint) <-> mem (g x) fixpoint
+  forall x. mem x (map f Tarski.mu) <-> mem (g x) Tarski.mu
 
-lemma h_coverage:
-  forall x. mem x fixpoint \/ mem x (map g all)
-
-lemma image_def:
-  forall x. mem x (map g all) -> (exists y. g y = x)
-
-lemma h_injects:
-  injective h
-
-lemma h_reverse_1:
-  forall x. inverse h (h x) = x
-
-lemma h_reverse_2:
+(*
+goal h_coverage:
   forall x. h (inverse h x) = x
+*)
 
-lemma h_surjects:
-  forall y. exists x. h x = y
+lemma h_bijection:
+  injective h /\ surjective h
 
 end
