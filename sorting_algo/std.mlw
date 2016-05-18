@@ -7,9 +7,6 @@ module PermutFacts
     forall a b c: array int, l u: int.
       permut_sub a b l u /\ permut_sub b c l u -> permut_sub a c l u
 
-  lemma permut_strength:
-    forall a b: array int, l u: int.
-      permut_sub a b l u -> permut_all a b
 end
 
 module SelectSort
@@ -222,12 +219,22 @@ module ArrayHeap
   | Refl: forall n: int. descendant n n
   | Step: forall p q: int. p <= q /\ descendant p (parent q) -> descendant p q
 
+  (* alternatively, we could clone int.Induction for this *)
+  predicate descendant_of_0 (x:int) = descendant 0 x
+  clone import int.Induction with predicate p = descendant_of_0
+(*
   let rec lemma descendant_root0 (pos: int): unit
   variant { pos }
   requires { 0 <= pos }
   ensures { descendant 0 pos }
   = if pos > 0 then descendant_root0 (parent pos)
+*)
 
+  lemma descendant_root_order: 
+    forall a: array int, pos size i: int. 
+      0 <= pos <= i < size <= length a -> heap a pos size -> descendant pos i -> a[pos] >= a[i]
+
+(*
   let rec lemma descendant_order (a: array int) (pos: int) (size: int) (i: int): unit
   variant { i }
   requires { 0 <= pos <= i < size <= length a }
@@ -235,6 +242,7 @@ module ArrayHeap
   requires { descendant pos i }
   ensures { a[pos] >= a[i] }
   = if i > pos then descendant_order a pos size (parent i)
+*)
 
   lemma heap_top:
     forall a: array int, n: int. 0 <= n <= length a /\ heap a 0 n -> forall m: int. 0 <= m < n -> a[0] >= a[m]
@@ -343,9 +351,7 @@ module HeapSort
       invariant { forall n m: int. 0 <= n <= i < m < length a -> a[n] <= a[m] }
       invariant { permut_all (at a 'Start) a }
       swap a 0 i;
-      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
       pushdown a 0 i;
-      assert { forall n: int. 0 <= n < i -> a[n] <= a[i] };
     done
 
 end
