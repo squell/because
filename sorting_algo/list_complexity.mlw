@@ -79,6 +79,7 @@ module MergeSort
   use import list.List
   use import list.Length
   use import list.NumOcc
+  use import list.Permut
   use import list.Append
   use import list.SortedInt
   use import ref.Ref
@@ -94,8 +95,7 @@ module MergeSort
   returns { (_,b) -> length b <= div (length data) 2 }
   returns { (a,_) -> length data <= 2*length a <= length data+1 }
   returns { (_,b) -> length data-1 <= 2*length b <= length data }
-  returns { (a,b) -> length data = length a + length b }
-  returns { (a,b) -> forall e. num_occ e a + num_occ e b = num_occ e data }
+  returns { (a,b) -> permut data (a ++ b) }
   = match data with
     | Nil -> (Nil, Nil)
     | Cons _ Nil -> (data, Nil)
@@ -106,8 +106,7 @@ module MergeSort
   let rec merge (a b: list int): list int
   variant { length a + length b }
   ensures { sorted a -> sorted b -> sorted result }
-  ensures { forall e. num_occ e a + num_occ e b = num_occ e result }
-  ensures { length result = length a + length b }
+  ensures { permut result (a ++ b) }
   ensures { !C.count - old !C.count <= length a + length b }
   = match a, b with
     | (Cons x xs, Cons y ys) -> 
@@ -120,8 +119,7 @@ module MergeSort
   let rec sortp (data: list int): list int
   variant { length data }
   ensures { sorted result }
-  ensures { forall e. num_occ e data = num_occ e result }
-  ensures { length result = length data }
+  ensures { permut data result }
   ensures { (exists k. k >= 0 /\ power 2 k = length data) -> let n = length data in !C.count - old !C.count <= n * log2 n }
   = if length data <= 1 then 
       data 
@@ -153,8 +151,7 @@ module MergeSort
   let rec sort (data: list int): list int
   variant { length data }
   ensures { sorted result }
-  ensures { forall e. num_occ e data = num_occ e result }
-  ensures { length result = length data }
+  ensures { permut data result }
   ensures { let n = upper2 (length data) in !C.count - old !C.count <= n * (log2 n) }
   ensures { let n = length data in !C.count - old !C.count <= 2*n * (log2 n+1) }
   = if length data <= 1 then 
@@ -166,7 +163,7 @@ module MergeSort
       let l = sort l in
       let r = sort r in
       assert { let n = length data in !C.count - at !C.count 'Start <= 2 * (div (upper2 n) 2) * (log2 (div (upper2 n) 2)) };
-      assert { let n = length data in !C.count - at !C.count 'Start <= (upper2 n) * (log2 (upper2 n)-1) }; (* not really necessary *)
+      assert { let n = length data in !C.count - at !C.count 'Start <= (upper2 n) * (log2 (upper2 n)-1) };
       merge l r
 
 end

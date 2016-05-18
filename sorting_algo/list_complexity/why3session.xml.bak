@@ -7,13 +7,13 @@
 <prover id="2" name="CVC4" version="1.4" timelimit="13" memlimit="1000"/>
 <prover id="4" name="Eprover" version="1.8-001" timelimit="13" memlimit="1000"/>
 <prover id="5" name="Z3" version="4.3.2" timelimit="13" memlimit="1000"/>
-<file name="../list_complexity.mlw">
-<theory name="Counter" sum="92e5b8ae9b2d094f0fca732a67e32875">
+<file name="../list_complexity.mlw" expanded="true">
+<theory name="Counter" sum="92e5b8ae9b2d094f0fca732a67e32875" expanded="true">
  <goal name="WP_parameter event" expl="VC for event">
  <proof prover="0"><result status="valid" time="0.13" steps="1"/></proof>
  </goal>
 </theory>
-<theory name="Logarithm" sum="2916c82df08b9a36a33b055e1df34ee6">
+<theory name="Logarithm" sum="2916c82df08b9a36a33b055e1df34ee6" expanded="true">
  <goal name="log_uniqueness">
  <proof prover="0"><result status="valid" time="0.51" steps="24"/></proof>
  </goal>
@@ -87,7 +87,7 @@
  <proof prover="0"><result status="valid" time="0.07" steps="7"/></proof>
  </goal>
 </theory>
-<theory name="MergeSort" sum="18a491e8410fc50547e347133c9e69b5">
+<theory name="MergeSort" sum="18a491e8410fc50547e347133c9e69b5" expanded="true">
  <goal name="WP_parameter split" expl="VC for split">
  <transf name="split_goal_wp">
   <goal name="WP_parameter split.1" expl="1. postcondition">

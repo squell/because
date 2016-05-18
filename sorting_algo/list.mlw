@@ -1,16 +1,17 @@
 module MergeSort
+
   use import int.Int
   use import list.List
   use import list.Length
   use import list.NumOcc
+  use import list.Permut
   use import list.Append
   use import list.SortedInt
 
   let rec split (data: list int): (list int, list int)
   variant { length data }
   returns { (_,b) -> length data > 1 -> 0 < length b < length data }
-  returns { (a,b) -> length data = length a + length b }
-  returns { (a,b) -> forall e. num_occ e a + num_occ e b = num_occ e data }
+  returns { (a,b) -> permut data (a ++ b) }
   = match data with
     | Nil -> (Nil, Nil)
     | Cons _ Nil -> (data, Nil)
@@ -21,8 +22,7 @@ module MergeSort
   let rec merge (a b: list int): list int
   variant { length a + length b }
   ensures { sorted a -> sorted b -> sorted result }
-  ensures { forall e. num_occ e a + num_occ e b = num_occ e result }
-  ensures { length result = length a + length b }
+  ensures { permut result (a ++ b) }
   = match a, b with
     | (Cons x xs, Cons y ys) -> 
         if x <= y then Cons x (merge xs b) else Cons y (merge a ys)
@@ -34,28 +34,11 @@ module MergeSort
   let rec sort (data: list int): list int
   variant { length data }
   ensures { sorted result }
-  ensures { forall e. num_occ e data = num_occ e result }
-  ensures { length result = length data }
+  ensures { permut data result }
   = if length data <= 1 then 
       data 
     else 
       let l, r = split data in
       merge (sort l) (sort r)
-
-  let rec lemma sorted_equivalence (x y: list int)
-  variant { x }
-  requires { forall e. num_occ e x = num_occ e y }
-  requires { sorted x }
-  requires { sorted y }
-  ensures { x = y }
-  = match x, y with
-    | Cons a xs, Cons b ys -> if a = b then sorted_equivalence xs ys else ()
-    | _, _ -> ()
-    end
-
-  let lemma length_equivalence (x y: list int)
-  requires { forall e. num_occ e x = num_occ e y }
-  ensures { length x = length y }
-  = sort x; sort y; ()
 
 end
